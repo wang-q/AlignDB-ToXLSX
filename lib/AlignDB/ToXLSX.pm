@@ -19,6 +19,9 @@ has 'user'   => ( is => 'ro', isa => 'Str' );    # database username
 has 'passwd' => ( is => 'ro', isa => 'Str' );    # database password
 has 'dbh'    => ( is => 'ro', isa => 'Ref' );    # store database handle here
 
+has 'mocking' => ( is => 'ro', isa => 'Bool', default => 0 )
+    ;                                            # don't connect to mysql
+
 has 'outfile'  => ( is => 'ro', isa => 'Str' );     # output file, autogenerable
 has 'workbook' => ( is => 'rw', isa => 'Object' );  # excel workbook object
 has 'format'   => ( is => 'ro', isa => 'HashRef' ); # excel formats
