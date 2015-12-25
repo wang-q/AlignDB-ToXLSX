@@ -9,6 +9,7 @@ use Excel::Writer::XLSX;
 use List::Util qw(first max maxstr min minstr reduce shuffle sum);
 use List::MoreUtils qw( all any );
 use Statistics::Descriptive;
+use Chart::Math::Axis;
 
 use YAML qw(Dump Load DumpFile LoadFile);
 
@@ -19,13 +20,18 @@ has 'user'   => ( is => 'ro', isa => 'Str' );    # database username
 has 'passwd' => ( is => 'ro', isa => 'Str' );    # database password
 has 'dbh'    => ( is => 'ro', isa => 'Ref' );    # store database handle here
 
-has 'mocking' => ( is => 'ro', isa => 'Bool', default => 0 )
-    ;                                            # don't connect to mysql
+has 'mocking' => ( is => 'ro', isa => 'Bool', default => 0 );    # don't connect to mysql
 
-has 'outfile'  => ( is => 'ro', isa => 'Str' );     # output file, autogenerable
-has 'workbook' => ( is => 'rw', isa => 'Object' );  # excel workbook object
-has 'format'   => ( is => 'ro', isa => 'HashRef' ); # excel formats
-has 'columns'  => ( is => 'ro', isa => 'HashRef' ); # excel column names
+has 'outfile'  => ( is => 'ro', isa => 'Str' );                  # output file, autogenerable
+has 'workbook' => ( is => 'rw', isa => 'Object' );               # excel workbook object
+has 'format'   => ( is => 'ro', isa => 'HashRef' );              # excel formats
+has 'columns'  => ( is => 'ro', isa => 'HashRef' );              # excel column names
+
+has 'font_name' => ( is => 'rw', isa => 'Str', default => sub {'Arial'}, );
+has 'font_size' => ( is => 'rw', isa => 'Num', default => sub {10}, );
+has 'width'     => ( is => 'rw', isa => 'Num', default => sub {320}, );
+has 'height'    => ( is => 'rw', isa => 'Num', default => sub {320}, );
+has 'max_ticks' => ( is => 'rw', isa => 'Int', default => sub {6} );
 
 sub BUILD {
     my $self = shift;
@@ -89,9 +95,9 @@ sub BUILD {
         ),
         HIGHLIGHT => $workbook->add_format( color => 'blue',  %font, ),
         NORMAL    => $workbook->add_format( color => 'black', %font, ),
-        NAME => $workbook->add_format( bold => 1, color => 57, %font, ),
-        TOTAL => $workbook->add_format( bold => 1, top => 2, %font, ),
-        DATE  => $workbook->add_format(
+        NAME      => $workbook->add_format( bold  => 1,       color => 57, %font, ),
+        TOTAL     => $workbook->add_format( bold  => 1,       top => 2, %font, ),
+        DATE => $workbook->add_format(
             bg_color   => 42,
             bold       => 1,
             num_format => 'yy-m-d hh:mm',
@@ -102,13 +108,12 @@ sub BUILD {
 
     # set $workbook column names
     my $columns = [
-        'A:A',  'B:B',  'C:C',  'D:D',  'E:E',  'F:F',  'G:G',  'H:H',
-        'I:I',  'J:J',  'K:K',  'L:L',  'M:M',  'N:N',  'O:O',  'P:P',
-        'Q:Q',  'R:R',  'S:S',  'T:T',  'U:U',  'V:V',  'W:W',  'X:X',
-        'Y:Y',  'Z:Z',  'AA:A', 'BB:B', 'CC:C', 'DD:D', 'EE:E', 'FF:F',
-        'GG:G', 'HH:H', 'II:I', 'JJ:J', 'KK:K', 'LL:L', 'MM:M', 'NN:N',
-        'OO:O', 'PP:P', 'QQ:Q', 'RR:R', 'SS:S', 'TT:T', 'UU:U', 'VV:V',
-        'WW:W', 'XX:X', 'YY:Y', 'ZZ:Z'
+        'A:A',  'B:B',  'C:C',  'D:D',  'E:E',  'F:F',  'G:G',  'H:H',  'I:I',  'J:J',
+        'K:K',  'L:L',  'M:M',  'N:N',  'O:O',  'P:P',  'Q:Q',  'R:R',  'S:S',  'T:T',
+        'U:U',  'V:V',  'W:W',  'X:X',  'Y:Y',  'Z:Z',  'AA:A', 'BB:B', 'CC:C', 'DD:D',
+        'EE:E', 'FF:F', 'GG:G', 'HH:H', 'II:I', 'JJ:J', 'KK:K', 'LL:L', 'MM:M', 'NN:N',
+        'OO:O', 'PP:P', 'QQ:Q', 'RR:R', 'SS:S', 'TT:T', 'UU:U', 'VV:V', 'WW:W', 'XX:X',
+        'YY:Y', 'ZZ:Z'
     ];
     $self->{columns} = $columns;
 
@@ -139,10 +144,8 @@ sub write_header_direct {
         $sheet->write( $sheet_row, $i, $query_name, $fmt->{HEADER} );
     }
     for ( my $i = 0; $i <= $#cols_name; $i++ ) {
-        $sheet->set_column( $cols[ $i + $sheet_col ],
-            max( length( $cols_name[$i] ) + 2, 9 ) );
-        $sheet->write( $sheet_row, $i + $sheet_col,
-            $cols_name[$i], $fmt->{HEADER} );
+        $sheet->set_column( $cols[ $i + $sheet_col ], max( length( $cols_name[$i] ) + 2, 9 ) );
+        $sheet->write( $sheet_row, $i + $sheet_col, $cols_name[$i], $fmt->{HEADER} );
     }
     $sheet_row++;
     $sheet->freeze_panes( 1, 0 );    # freeze table
@@ -179,10 +182,8 @@ sub write_header_sql {
         $sheet->write( $sheet_row, $i, $query_name, $fmt->{HEADER} );
     }
     for ( my $i = 0; $i < scalar @cols_name; $i++ ) {
-        $sheet->set_column( $cols[ $i + $sheet_col ],
-            max( length( $cols_name[$i] ) + 2, 9 ) );
-        $sheet->write( $sheet_row, $i + $sheet_col,
-            $cols_name[$i], $fmt->{HEADER} );
+        $sheet->set_column( $cols[ $i + $sheet_col ], max( length( $cols_name[$i] ) + 2, 9 ) );
+        $sheet->write( $sheet_row, $i + $sheet_col, $cols_name[$i], $fmt->{HEADER} );
     }
     $sheet_row++;
     $sheet->freeze_panes( 1, 0 );    # freeze table
@@ -230,10 +231,7 @@ sub write_row_direct {
 
     # insert table columns
     for ( my $i = 0; $i < scalar @$row; $i++ ) {
-        $sheet->write(
-            $sheet_row, $i + $sheet_col,
-            $row->[$i], $fmt->{$content_format}
-        );
+        $sheet->write( $sheet_row, $i + $sheet_col, $row->[$i], $fmt->{$content_format} );
     }
     $sheet_row += $write_step;
 
@@ -290,10 +288,7 @@ sub write_content_direct {
     # insert table columns
     while ( my @row = $sth->fetchrow_array ) {
         for ( my $i = 0; $i < scalar @row; $i++ ) {
-            $sheet->write(
-                $sheet_row, $i + $sheet_col,
-                $row[$i],   $fmt->{$content_format}
-            );
+            $sheet->write( $sheet_row, $i + $sheet_col, $row[$i], $fmt->{$content_format} );
         }
         if ( scalar @$append_column ) {
             my $appand_row = shift @$append_column;
@@ -454,8 +449,7 @@ sub write_content_highlight {
         }
         $last_number = $row[1];
         for ( my $i = 0; $i < scalar @row; $i++ ) {
-            $sheet->write( $sheet_row, $i + $sheet_col,
-                $row[$i], $fmt->{$style} );
+            $sheet->write( $sheet_row, $i + $sheet_col, $row[$i], $fmt->{$style} );
         }
         $sheet_row++;
     }
@@ -486,12 +480,8 @@ sub write_content_column {
 
         # insert table columns
         while ( my @row = $sth->fetchrow_array ) {
-            $sheet->write( $sub_sheet_row, 0 + $sheet_col,
-                $row[0], $fmt->{NORMAL} );
-            $sheet->write(
-                $sub_sheet_row, $i + 1 + $sheet_col,
-                $row[1],        $fmt->{NORMAL}
-            );
+            $sheet->write( $sub_sheet_row, 0 + $sheet_col,      $row[0], $fmt->{NORMAL} );
+            $sheet->write( $sub_sheet_row, $i + 1 + $sheet_col, $row[1], $fmt->{NORMAL} );
             $sub_sheet_row++;
         }
         $sth->finish;
@@ -824,6 +814,117 @@ sub calc_threshold {
     }
 
     return ( $combine, $piece );
+}
+
+sub draw_y {
+    my $self   = shift;
+    my $sheet  = shift;
+    my $option = shift;
+
+    my $workbook   = $self->workbook;
+    my $sheet_name = $sheet->get_name;
+
+    my $font_name = $option->{font_name} || $self->font_name;
+    my $font_size = $option->{font_size} || $self->font_size;
+    my $height    = $option->{height}    || $self->height;
+    my $width     = $option->{width}     || $self->width;
+
+    # E2
+    my $top  = $option->{top}  || 1;
+    my $left = $option->{left} || 4;
+
+    # 0 based
+    my $first_row = $option->{first_row};
+    my $last_row  = $option->{last_row};
+    my $x_column  = $option->{x_column};
+    my $y_column  = $option->{y_column};
+
+    # Set axes' scale
+    my $x_max_scale = $option->{x_max_scale};
+    my $x_min_scale = $option->{x_min_scale};
+    if ( !defined $x_min_scale ) {
+        $x_min_scale = 0;
+    }
+    if ( !defined $x_max_scale ) {
+        my $x_scale_unit = $option->{x_scale_unit};
+        my $x_min_value  = min( @{ $option->{x_data} } );
+        my $x_max_value  = max( @{ $option->{x_data} } );
+        $x_min_scale = int( $x_min_value / $x_scale_unit ) * $x_scale_unit;
+        $x_max_scale = ( int( $x_max_value / $x_scale_unit ) + 1 ) * $x_scale_unit;
+    }
+
+    my $y_scale;
+    if ( exists $option->{y_data} ) {
+        $y_scale = $self->_find_scale( $option->{y_data} );
+    }
+
+    my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
+
+    # [ $sheetname, $row_start, $row_end, $col_start, $col_end ]
+    #  #"=$sheetname" . '!$A$2:$A$7',
+    $chart->add_series(
+        categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
+        values     => [ $sheet_name, $first_row, $last_row, $y_column, $y_column ],
+        line       => {
+            width     => 1.25,
+            dash_type => 'solid',
+        },
+        marker => { type => 'diamond' },
+    );
+    $chart->set_size( width => $width, height => $height );
+
+    # Remove title and legend
+    $chart->set_title( none => 1 );
+    $chart->set_legend( none => 1 );
+
+    # Blank data is shown as a gap
+    $chart->show_blanks_as('gap');
+
+    # set axis
+    $chart->set_x_axis(
+        name      => $option->{x_title},
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        min             => $x_min_scale,
+        max             => $x_max_scale,
+    );
+    $chart->set_y_axis(
+        name      => $option->{y_title},
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        defined $y_scale
+        ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
+        : (),
+    );
+
+    # plorarea
+    $chart->set_plotarea( border => { color => 'black', }, );
+
+    $sheet->insert_chart( $top, $left, $chart );   
+
+    return;
+}
+
+sub _find_scale {
+    my $self    = shift;
+    my $dataset = shift;
+
+    my $axis = Chart::Math::Axis->new;
+
+    $axis->add_data( @{$dataset} );
+    $axis->set_maximum_intervals( $self->max_ticks );
+
+    return {
+        max  => $axis->top,
+        min  => $axis->bottom,
+        unit => $axis->interval_size,
+    };
 }
 
 # instance destructor
