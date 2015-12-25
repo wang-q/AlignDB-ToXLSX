@@ -1,0 +1,70 @@
+{
+   "abstract" : "Generate xlsx files from SQL queries or just arrays.",
+   "author" : [
+      "Qiang Wang <wang-q@outlook.com>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Dist::Zilla version 5.039, Dist::Milla version v1.0.15, CPAN::Meta::Converter version 2.150005",
+   "license" : [
+      "perl_5"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "AlignDB-ToXLSX",
+   "no_index" : {
+      "directory" : [
+         "t",
+         "xt",
+         "inc",
+         "share",
+         "eg",
+         "examples"
+      ]
+   },
+   "prereqs" : {
+      "configure" : {
+         "requires" : {
+            "ExtUtils::MakeMaker" : "0"
+         }
+      },
+      "develop" : {
+         "requires" : {
+            "Dist::Milla" : "v1.0.15",
+            "Test::Pod" : "1.41"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Chart::Math::Axis" : "0",
+            "DBI" : "0",
+            "Excel::Writer::XLSX" : "0",
+            "List::MoreUtils" : "0",
+            "Moose" : "0",
+            "Statistics::Descriptive" : "0",
+            "YAML" : "0",
+            "perl" : "5.008001"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Test::More" : "0.88"
+         }
+      }
+   },
+   "release_status" : "stable",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "https://github.com/wang-q/AlignDB-ToXLSX/issues"
+      },
+      "homepage" : "https://github.com/wang-q/AlignDB-ToXLSX",
+      "repository" : {
+         "type" : "git",
+         "url" : "https://github.com/wang-q/AlignDB-ToXLSX.git",
+         "web" : "https://github.com/wang-q/AlignDB-ToXLSX"
+      }
+   },
+   "version" : "1.0.0"
+}
+

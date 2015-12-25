@@ -1,18 +1,27 @@
 package AlignDB::ToXLSX;
+use strict;
+use warnings;
+use autodie;
+
+use 5.008001;
+
+our $VERSION = '1.0.0';
 
 # ABSTRACT: Generate xlsx files from SQL queries or just arrays.
 
 use Moose;
+use Carp;
 
-use DBI;
 use Excel::Writer::XLSX;
-use List::Util qw(first max maxstr min minstr reduce shuffle sum);
-use List::MoreUtils qw( all any );
+use DBI;
 use Statistics::Descriptive;
 use Chart::Math::Axis;
+use List::Util qw(first max maxstr min minstr reduce shuffle sum);
+use List::MoreUtils qw( all any );
 
 use YAML qw(Dump Load DumpFile LoadFile);
 
+# mysql
 has 'mysql'  => ( is => 'ro', isa => 'Str' );    # e.g. 'alignDB:202.119.43.5'
 has 'server' => ( is => 'ro', isa => 'Str' );    # e.g. '202.119.43.5'
 has 'db'     => ( is => 'ro', isa => 'Str' );    # e.g. 'alignDB'
@@ -20,13 +29,14 @@ has 'user'   => ( is => 'ro', isa => 'Str' );    # database username
 has 'passwd' => ( is => 'ro', isa => 'Str' );    # database password
 has 'dbh'    => ( is => 'ro', isa => 'Ref' );    # store database handle here
 
-has 'mocking' => ( is => 'ro', isa => 'Bool', default => 0 );    # don't connect to mysql
+has 'mocking' => ( is => 'ro', isa => 'Bool', default => sub {0}, );    # don't connect to mysql
 
-has 'outfile'  => ( is => 'ro', isa => 'Str' );                  # output file, autogenerable
-has 'workbook' => ( is => 'rw', isa => 'Object' );               # excel workbook object
-has 'format'   => ( is => 'ro', isa => 'HashRef' );              # excel formats
-has 'columns'  => ( is => 'ro', isa => 'HashRef' );              # excel column names
+# outfiles
+has 'outfile'  => ( is => 'ro', isa => 'Str' );                         # output file, autogenerable
+has 'workbook' => ( is => 'rw', isa => 'Object' );                      # excel workbook object
+has 'format'   => ( is => 'ro', isa => 'HashRef' );                     # excel formats
 
+# charts
 has 'font_name' => ( is => 'rw', isa => 'Str', default => sub {'Arial'}, );
 has 'font_size' => ( is => 'rw', isa => 'Num', default => sub {10}, );
 has 'width'     => ( is => 'rw', isa => 'Num', default => sub {320}, );
@@ -106,17 +116,6 @@ sub BUILD {
     };
     $self->{format} = $format;
 
-    # set $workbook column names
-    my $columns = [
-        'A:A',  'B:B',  'C:C',  'D:D',  'E:E',  'F:F',  'G:G',  'H:H',  'I:I',  'J:J',
-        'K:K',  'L:L',  'M:M',  'N:N',  'O:O',  'P:P',  'Q:Q',  'R:R',  'S:S',  'T:T',
-        'U:U',  'V:V',  'W:W',  'X:X',  'Y:Y',  'Z:Z',  'AA:A', 'BB:B', 'CC:C', 'DD:D',
-        'EE:E', 'FF:F', 'GG:G', 'HH:H', 'II:I', 'JJ:J', 'KK:K', 'LL:L', 'MM:M', 'NN:N',
-        'OO:O', 'PP:P', 'QQ:Q', 'RR:R', 'SS:S', 'TT:T', 'UU:U', 'VV:V', 'WW:W', 'XX:X',
-        'YY:Y', 'ZZ:Z'
-    ];
-    $self->{columns} = $columns;
-
     return;
 }
 
@@ -127,7 +126,6 @@ sub write_header_direct {
     my $workbook = $self->workbook;
     my $sheet    = $workbook->add_worksheet($sheet_name);
     my $fmt      = $self->format;
-    my @cols     = @{ $self->columns };
 
     # init table cursor
     my $sheet_row = $option->{sheet_row};
@@ -138,14 +136,11 @@ sub write_header_direct {
     my $query_name = $option->{query_name};
 
     # create table header
-    my @cols_name = @$header;
     for ( my $i = 0; $i < $sheet_col; $i++ ) {
-        $sheet->set_column( $cols[$i], 12 );
         $sheet->write( $sheet_row, $i, $query_name, $fmt->{HEADER} );
     }
-    for ( my $i = 0; $i <= $#cols_name; $i++ ) {
-        $sheet->set_column( $cols[ $i + $sheet_col ], max( length( $cols_name[$i] ) + 2, 9 ) );
-        $sheet->write( $sheet_row, $i + $sheet_col, $cols_name[$i], $fmt->{HEADER} );
+    for ( my $i = 0; $i <= scalar @{$header}; $i++ ) {
+        $sheet->write( $sheet_row, $i + $sheet_col, $header->[$i], $fmt->{HEADER} );
     }
     $sheet_row++;
     $sheet->freeze_panes( 1, 0 );    # freeze table
@@ -161,7 +156,6 @@ sub write_header_sql {
     my $workbook = $self->workbook;
     my $sheet    = $workbook->add_worksheet($sheet_name);
     my $fmt      = $self->format;
-    my @cols     = @{ $self->columns };
 
     # init table cursor
     my $sheet_row = $option->{sheet_row};
@@ -178,11 +172,9 @@ sub write_header_sql {
     # create table header
     my @cols_name = @{ $sth->{'NAME'} };
     for ( my $i = 0; $i < $sheet_col; $i++ ) {
-        $sheet->set_column( $cols[$i], 16 );
         $sheet->write( $sheet_row, $i, $query_name, $fmt->{HEADER} );
     }
     for ( my $i = 0; $i < scalar @cols_name; $i++ ) {
-        $sheet->set_column( $cols[ $i + $sheet_col ], max( length( $cols_name[$i] ) + 2, 9 ) );
         $sheet->write( $sheet_row, $i + $sheet_col, $cols_name[$i], $fmt->{HEADER} );
     }
     $sheet_row++;
@@ -195,8 +187,7 @@ sub write_row_direct {
     my ( $self, $sheet, $option ) = @_;
 
     # init
-    my $fmt  = $self->format;
-    my @cols = @{ $self->columns };
+    my $fmt = $self->format;
 
     # init table cursor
     my $sheet_row = $option->{sheet_row};
@@ -242,9 +233,8 @@ sub write_content_direct {
     my ( $self, $sheet, $option ) = @_;
 
     # init
-    my $dbh  = $self->dbh;
-    my $fmt  = $self->format;
-    my @cols = @{ $self->columns };
+    my $dbh = $self->dbh;
+    my $fmt = $self->format;
 
     # init table cursor
     my $sheet_row = $option->{sheet_row};
@@ -381,9 +371,8 @@ sub write_content_series {
     my ( $self, $sheet, $option ) = @_;
 
     # init objects
-    my $dbh  = $self->dbh;
-    my $fmt  = $self->format;
-    my @cols = @{ $self->columns };
+    my $dbh = $self->dbh;
+    my $fmt = $self->format;
 
     # init table cursor
     my $sheet_row = $option->{sheet_row};
@@ -417,9 +406,8 @@ sub write_content_highlight {
     my ( $self, $sheet, $option ) = @_;
 
     # init
-    my $dbh  = $self->dbh;
-    my $fmt  = $self->format;
-    my @cols = @{ $self->columns };
+    my $dbh = $self->dbh;
+    my $fmt = $self->format;
 
     # init table cursor
     my $sheet_row = $option->{sheet_row};
@@ -459,9 +447,8 @@ sub write_content_column {
     my ( $self, $sheet, $option ) = @_;
 
     # init objects
-    my $dbh  = $self->dbh;
-    my $fmt  = $self->format;
-    my @cols = @{ $self->columns };
+    my $dbh = $self->dbh;
+    my $fmt = $self->format;
 
     # init table cursor
     my $sheet_row = $option->{sheet_row};
@@ -723,7 +710,6 @@ sub check_column {
 
         return $count;
     }
-
 }
 
 sub quantile {
@@ -906,7 +892,7 @@ sub draw_y {
     # plorarea
     $chart->set_plotarea( border => { color => 'black', }, );
 
-    $sheet->insert_chart( $top, $left, $chart );   
+    $sheet->insert_chart( $top, $left, $chart );
 
     return;
 }
@@ -946,12 +932,29 @@ sub DESTROY {
 
 1;
 
-#
-# A simple class to use DBI & Excel::Writer::XLSX to make excel files
-#
-# perl -e "print scalar localtime"
-# Tue Mar  7 19:22:28 2006
-#
-# Version: 0.1
-# Author: Wang Qiang
-# For Gattaca lab.
+__END__
+
+=head1 NAME
+
+AlignDB::ToXLSX - create xlsx files
+
+=head1 SYNOPSIS
+
+    my $write_obj = AlignDB::ToXLSX->new(
+        outfile => $outfile,
+        mocking => 1,
+    );
+
+=cut
+
+=head1 LICENSE
+
+Copyright 2014- Qiang Wang
+
+This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
+
+=head1 AUTHOR
+
+Qiang Wang
+
+=cut
