@@ -5,7 +5,7 @@ use autodie;
 
 use 5.008001;
 
-our $VERSION = '1.0.0';
+our $VERSION = '1.0.1';
 
 # ABSTRACT: Generate xlsx files from SQL queries or just arrays.
 
