@@ -43,6 +43,9 @@ has 'width'     => ( is => 'rw', isa => 'Num', default => sub {320}, );
 has 'height'    => ( is => 'rw', isa => 'Num', default => sub {320}, );
 has 'max_ticks' => ( is => 'rw', isa => 'Int', default => sub {6} );
 
+# Replace texts in titles
+has 'replace' => ( is => 'rw', isa => 'HashRef', default => sub { {} } );
+
 sub BUILD {
     my $self = shift;
 
@@ -92,8 +95,8 @@ sub BUILD {
 
     # set $workbook format
     my %font = (
-        font => 'Arial',
-        size => 10,
+        font => $self->font_name,
+        size => $self->font_size,
     );
     my $format = {
         HEADER => $workbook->add_format(
@@ -139,7 +142,7 @@ sub write_header_direct {
     for ( my $i = 0; $i < $sheet_col; $i++ ) {
         $sheet->write( $sheet_row, $i, $query_name, $fmt->{HEADER} );
     }
-    for ( my $i = 0; $i <= scalar @{$header}; $i++ ) {
+    for ( my $i = 0; $i < scalar @{$header}; $i++ ) {
         $sheet->write( $sheet_row, $i + $sheet_col, $header->[$i], $fmt->{HEADER} );
     }
     $sheet_row++;
@@ -868,7 +871,7 @@ sub draw_y {
 
     # set axis
     $chart->set_x_axis(
-        name      => $option->{x_title},
+        name      => $self->_replace_text( $option->{x_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },
@@ -878,7 +881,7 @@ sub draw_y {
         max             => $x_max_scale,
     );
     $chart->set_y_axis(
-        name      => $option->{y_title},
+        name      => $self->_replace_text( $option->{y_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },
@@ -886,6 +889,130 @@ sub draw_y {
         minor_gridlines => { visible => 0, },
         defined $y_scale
         ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
+        : (),
+    );
+
+    # plorarea
+    $chart->set_plotarea( border => { color => 'black', }, );
+
+    $sheet->insert_chart( $top, $left, $chart );
+
+    return;
+}
+
+sub draw_2y {
+    my $self   = shift;
+    my $sheet  = shift;
+    my $option = shift;
+
+    my $workbook   = $self->workbook;
+    my $sheet_name = $sheet->get_name;
+
+    my $font_name = $option->{font_name} || $self->font_name;
+    my $font_size = $option->{font_size} || $self->font_size;
+    my $height    = $option->{height}    || $self->height;
+    my $width     = $option->{width}     || $self->width;
+
+    # E2
+    my $top  = $option->{top}  || 1;
+    my $left = $option->{left} || 4;
+
+    # 0 based
+    my $first_row = $option->{first_row};
+    my $last_row  = $option->{last_row};
+    my $x_column  = $option->{x_column};
+    my $y_column  = $option->{y_column};
+    my $y2_column = $option->{y2_column};
+
+    # Set axes' scale
+    my $x_max_scale = $option->{x_max_scale};
+    my $x_min_scale = $option->{x_min_scale};
+    if ( !defined $x_min_scale ) {
+        $x_min_scale = 0;
+    }
+    if ( !defined $x_max_scale ) {
+        my $x_scale_unit = $option->{x_scale_unit};
+        my $x_min_value  = min( @{ $option->{x_data} } );
+        my $x_max_value  = max( @{ $option->{x_data} } );
+        $x_min_scale = int( $x_min_value / $x_scale_unit ) * $x_scale_unit;
+        $x_max_scale = ( int( $x_max_value / $x_scale_unit ) + 1 ) * $x_scale_unit;
+    }
+
+    my $y_scale;
+    if ( exists $option->{y_data} ) {
+        $y_scale = $self->_find_scale( $option->{y_data} );
+    }
+
+    my $y2_scale;
+    if ( exists $option->{y2_data} ) {
+        $y2_scale = $self->_find_scale( $option->{y2_data} );
+    }
+
+    my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
+
+    # [ $sheetname, $row_start, $row_end, $col_start, $col_end ]
+    #  #"=$sheetname" . '!$A$2:$A$7',
+    $chart->add_series(
+        categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
+        values     => [ $sheet_name, $first_row, $last_row, $y_column, $y_column ],
+        line       => {
+            width     => 1.25,
+            dash_type => 'solid',
+        },
+        marker => { type => 'diamond', },
+    );
+
+    # second Y axis
+    $chart->add_series(
+        categories => [ $sheet_name, $first_row, $last_row, $x_column,  $x_column ],
+        values     => [ $sheet_name, $first_row, $last_row, $y2_column, $y2_column ],
+        line       => {
+            width     => 1.25,
+            dash_type => 'solid',
+        },
+        marker  => { type => 'square', size => 5, fill => { color => 'white', }, },
+        y2_axis => 1,
+    );
+    $chart->set_size( width => $width, height => $height );
+
+    # Remove title and legend
+    $chart->set_title( none => 1 );
+    $chart->set_legend( none => 1 );
+
+    # Blank data is shown as a gap
+    $chart->show_blanks_as('gap');
+
+    # set axis
+    $chart->set_x_axis(
+        name      => $self->_replace_text( $option->{x_title} ),
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        min             => $x_min_scale,
+        max             => $x_max_scale,
+    );
+    $chart->set_y_axis(
+        name      => $self->_replace_text( $option->{y_title} ),
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        defined $y_scale
+        ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
+        : (),
+    );
+    $chart->set_y2_axis(
+        name      => $self->_replace_text( $option->{y2_title} ),
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        defined $y2_scale
+        ? ( min => $y2_scale->{min}, max => $y2_scale->{max}, major_unit => $y2_scale->{unit}, )
         : (),
     );
 
@@ -911,6 +1038,19 @@ sub _find_scale {
         min  => $axis->bottom,
         unit => $axis->interval_size,
     };
+}
+
+sub _replace_text {
+    my $self    = shift;
+    my $text    = shift;
+    my $replace = $self->replace;
+
+    for my $key ( keys %$replace ) {
+        my $value = $replace->{$key};
+        $text =~ s/$key/$value/gi;
+    }
+
+    return $text;
 }
 
 # instance destructor
