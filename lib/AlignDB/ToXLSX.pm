@@ -446,38 +446,6 @@ sub write_content_highlight {
     }
 }
 
-sub write_content_column {
-    my ( $self, $sheet, $option ) = @_;
-
-    # init objects
-    my $dbh = $self->dbh;
-    my $fmt = $self->format;
-
-    # init table cursor
-    my $sheet_row = $option->{sheet_row};
-    my $sheet_col = $option->{sheet_col};
-
-    my $sql_query  = $option->{sql_query};
-    my @conditions = @{ $option->{conditions} };
-
-    for ( my $i = 0; $i < scalar @conditions; $i++ ) {
-        my @bind_values = @{ $conditions[$i] };
-
-        my $sub_sheet_row = $sheet_row;
-
-        my $sth = $dbh->prepare($sql_query);
-        $sth->execute(@bind_values);
-
-        # insert table columns
-        while ( my @row = $sth->fetchrow_array ) {
-            $sheet->write( $sub_sheet_row, 0 + $sheet_col,      $row[0], $fmt->{NORMAL} );
-            $sheet->write( $sub_sheet_row, $i + 1 + $sheet_col, $row[1], $fmt->{NORMAL} );
-            $sub_sheet_row++;
-        }
-        $sth->finish;
-    }
-}
-
 sub make_combine {
     my ( $self, $option ) = @_;
 
