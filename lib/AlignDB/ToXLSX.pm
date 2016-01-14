@@ -5,7 +5,7 @@ use autodie;
 
 use 5.008001;
 
-our $VERSION = '1.0.1';
+our $VERSION = '1.0.2';
 
 # ABSTRACT: Generate xlsx files from SQL queries or just arrays.
 
@@ -98,24 +98,27 @@ sub BUILD {
         font => $self->font_name,
         size => $self->font_size,
     );
+    my %header = (
+        align    => 'center',
+        bg_color => 42,
+        bold     => 1,
+        bottom   => 2,
+    );
     my $format = {
-        HEADER => $workbook->add_format(
-            align    => 'center',
-            bg_color => 42,
-            bold     => 1,
-            bottom   => 2,
-            %font,
-        ),
+        HEADER => $workbook->add_format( %header, %font, ),
         HIGHLIGHT => $workbook->add_format( color => 'blue',  %font, ),
         NORMAL    => $workbook->add_format( color => 'black', %font, ),
         NAME      => $workbook->add_format( bold  => 1,       color => 57, %font, ),
         TOTAL     => $workbook->add_format( bold  => 1,       top => 2, %font, ),
         DATE => $workbook->add_format(
+            align      => 'left',
             bg_color   => 42,
             bold       => 1,
-            num_format => 'yy-m-d hh:mm',
+            num_format => 'yyyy-mm-dd hh:mm',
             %font,
         ),
+        URL       => $workbook->add_format( color => 'blue', underline => 1, %font, ),
+        URLHEADER => $workbook->add_format( color => 'blue', underline => 1, %header, %font, ),
     };
     $self->{format} = $format;
 
@@ -773,6 +776,43 @@ sub calc_threshold {
     return ( $combine, $piece );
 }
 
+# See HACK #7 in OReilly.Excel.Hacks.2nd.Edition.
+sub add_index_sheet {
+    my $self = shift;
+
+    my $workbook = $self->workbook;
+    my $fmt      = $self->format;
+
+    # existing sheets
+    my @sheets = $workbook->sheets();
+
+    # create a new worksheet named "INDEX"
+    my $sheet_name  = "INDEX";
+    my $index_sheet = $workbook->add_worksheet($sheet_name);
+
+    # set hyperlink column with large width
+    $index_sheet->set_column( 'A:A', 20 );
+
+    #   0    1    2     3     4    5     6     7     8
+    #($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) =
+    #                                            localtime(time);
+    my $date = sprintf "%4d-%02d-%02dT%02d:%02d", (localtime)[5] + 1900, (localtime)[4] + 1,
+        (localtime)[ 3, 2, 1 ];
+    $index_sheet->write_date_time( 'A1', $date, $fmt->{DATE} );
+
+    for my $i ( 0 .. $#sheets ) {
+        my $cur_sheet = $sheets[$i];
+        my $cur_name  = $cur_sheet->get_name;
+
+        # $worksheet->write_url( $row, $col, $url, $format, $label )
+        $index_sheet->write_url( $i + 1, 0, "internal:$cur_name!A1", $fmt->{URL}, $cur_name );
+
+        $cur_sheet->write_url( "A1", "internal:INDEX!A" . ( $i + 2 ), $fmt->{URLHEADER}, "INDEX" );
+    }
+
+    return;
+}
+
 sub draw_y {
     my $self   = shift;
     my $sheet  = shift;
@@ -859,7 +899,7 @@ sub draw_y {
         ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
         : (),
     );
-    
+
     # https://github.com/jmcnamara/excel-writer-xlsx/issues/155
     $chart->{_x_axis}{_major_tick_mark} = 'in';
     $chart->{_y_axis}{_major_tick_mark} = 'in';
@@ -987,10 +1027,10 @@ sub draw_2y {
         ? ( min => $y2_scale->{min}, max => $y2_scale->{max}, major_unit => $y2_scale->{unit}, )
         : (),
     );
-    
+
     # https://github.com/jmcnamara/excel-writer-xlsx/issues/155
-    $chart->{_x_axis}{_major_tick_mark} = 'in';
-    $chart->{_y_axis}{_major_tick_mark} = 'in';
+    $chart->{_x_axis}{_major_tick_mark}  = 'in';
+    $chart->{_y_axis}{_major_tick_mark}  = 'in';
     $chart->{_y2_axis}{_major_tick_mark} = 'in';
 
     # plorarea
