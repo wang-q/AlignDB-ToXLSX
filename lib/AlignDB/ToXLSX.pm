@@ -859,6 +859,10 @@ sub draw_y {
         ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
         : (),
     );
+    
+    # https://github.com/jmcnamara/excel-writer-xlsx/issues/155
+    $chart->{_x_axis}{_major_tick_mark} = 'in';
+    $chart->{_y_axis}{_major_tick_mark} = 'in';
 
     # plorarea
     $chart->set_plotarea( border => { color => 'black', }, );
@@ -983,6 +987,11 @@ sub draw_2y {
         ? ( min => $y2_scale->{min}, max => $y2_scale->{max}, major_unit => $y2_scale->{unit}, )
         : (),
     );
+    
+    # https://github.com/jmcnamara/excel-writer-xlsx/issues/155
+    $chart->{_x_axis}{_major_tick_mark} = 'in';
+    $chart->{_y_axis}{_major_tick_mark} = 'in';
+    $chart->{_y2_axis}{_major_tick_mark} = 'in';
 
     # plorarea
     $chart->set_plotarea( border => { color => 'black', }, );
