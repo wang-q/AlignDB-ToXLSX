@@ -1,25 +1,15 @@
 package AlignDB::ToXLSX;
-use strict;
-use warnings;
-use autodie;
-
-use 5.008001;
-
-our $VERSION = '1.0.2';
-
-# ABSTRACT: Generate xlsx files from SQL queries or just arrays.
-
 use Moose;
 use Carp;
-
 use Excel::Writer::XLSX;
 use DBI;
 use Statistics::Descriptive;
 use Chart::Math::Axis;
 use List::Util qw(first max maxstr min minstr reduce shuffle sum);
 use List::MoreUtils qw( all any );
-
 use YAML qw(Dump Load DumpFile LoadFile);
+
+our $VERSION = '1.0.3';
 
 # mysql
 has 'mysql'  => ( is => 'ro', isa => 'Str' );    # e.g. 'alignDB:202.119.43.5'
@@ -1093,7 +1083,7 @@ __END__
 
 =head1 NAME
 
-AlignDB::ToXLSX - create xlsx files
+AlignDB::ToXLSX - Create xlsx files from SQL queries or just arrays.
 
 =head1 SYNOPSIS
 
@@ -1102,16 +1092,15 @@ AlignDB::ToXLSX - create xlsx files
         mocking => 1,
     );
 
-=cut
-
-=head1 LICENSE
-
-Copyright 2014- Qiang Wang
-
-This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
-
 =head1 AUTHOR
 
-Qiang Wang
+Qiang Wang <wang-q@outlook.com>
+
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2008 by Qiang Wang.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =cut

@@ -1,6 +1,6 @@
 # NAME
 
-AlignDB::ToXLSX - create xlsx files
+AlignDB::ToXLSX - Create xlsx files from SQL queries or just arrays.
 
 # SYNOPSIS
 
@@ -9,12 +9,13 @@ AlignDB::ToXLSX - create xlsx files
         mocking => 1,
     );
 
-# LICENSE
-
-Copyright 2014- Qiang Wang
-
-This library is free software; you can redistribute it and/or modify it under the same terms as Perl itself.
-
 # AUTHOR
 
-Qiang Wang
+Qiang Wang &lt;wang-q@outlook.com>
+
+# COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2008 by Qiang Wang.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
