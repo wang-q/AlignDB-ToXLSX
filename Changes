@@ -1,0 +1,7 @@
+Revision history for AlignDB-ToXLSX
+
+{{$NEXT}}
+    - Switch to Dist::Milla
+    - Remove alignDB specific methods
+    - draw_y() and draw_2y()
+    - add_index_sheet()
