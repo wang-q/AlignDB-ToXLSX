@@ -9,7 +9,7 @@ use List::Util qw(first max maxstr min minstr reduce shuffle sum);
 use List::MoreUtils qw( all any );
 use YAML qw(Dump Load DumpFile LoadFile);
 
-our $VERSION = '1.0.3';
+our $VERSION = '1.0.4';
 
 # mysql
 has 'mysql'  => ( is => 'ro', isa => 'Str' );    # e.g. 'alignDB:202.119.43.5'

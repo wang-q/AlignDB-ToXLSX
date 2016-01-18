@@ -2,6 +2,9 @@ Revision history for AlignDB-ToXLSX
 
 {{$NEXT}}
 
+1.0.4  2016-01-19 06:58:30 CST
+    - add draw_xy()
+
 1.0.3  2016-01-15 16:50:30 CST
     - Switch to Dist::Milla
     - Remove alignDB specific methods
