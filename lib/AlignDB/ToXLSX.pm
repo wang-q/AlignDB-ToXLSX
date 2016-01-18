@@ -1031,6 +1031,92 @@ sub draw_2y {
     return;
 }
 
+sub draw_xy {
+    my $self   = shift;
+    my $sheet  = shift;
+    my $option = shift;
+
+    my $workbook   = $self->workbook;
+    my $sheet_name = $sheet->get_name;
+
+    my $font_name = $option->{font_name} || $self->font_name;
+    my $font_size = $option->{font_size} || $self->font_size;
+    my $height    = $option->{height}    || $self->height;
+    my $width     = $option->{width}     || $self->width;
+
+    # E2
+    my $top  = $option->{top}  || 1;
+    my $left = $option->{left} || 4;
+
+    # 0 based
+    my $first_row = $option->{first_row};
+    my $last_row  = $option->{last_row};
+    my $x_column  = $option->{x_column};
+    my $y_column  = $option->{y_column};
+
+    my $x_scale;
+    if ( exists $option->{x_data} ) {
+        $x_scale = $self->_find_scale( $option->{x_data} );
+    }
+    my $y_scale;
+    if ( exists $option->{y_data} ) {
+        $y_scale = $self->_find_scale( $option->{y_data} );
+    }
+
+    my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
+
+    # [ $sheetname, $row_start, $row_end, $col_start, $col_end ]
+    #  #"=$sheetname" . '!$A$2:$A$7',
+    $chart->add_series(
+        categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
+        values     => [ $sheet_name, $first_row, $last_row, $y_column, $y_column ],
+        marker => { type => 'diamond' },
+    );
+    $chart->set_size( width => $width, height => $height );
+
+    # Remove title and legend
+    $chart->set_title( none => 1 );
+    $chart->set_legend( none => 1 );
+
+    # Blank data is shown as a gap
+    $chart->show_blanks_as('gap');
+
+    # set axis
+    $chart->set_x_axis(
+        name      => $self->_replace_text( $option->{x_title} ),
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        defined $x_scale
+        ? ( min => $x_scale->{min}, max => $x_scale->{max}, major_unit => $x_scale->{unit}, )
+        : (),
+    );
+    $chart->set_y_axis(
+        name      => $self->_replace_text( $option->{y_title} ),
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        defined $y_scale
+        ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
+        : (),
+    );
+
+    # https://github.com/jmcnamara/excel-writer-xlsx/issues/155
+    $chart->{_x_axis}{_major_tick_mark} = 'in';
+    $chart->{_y_axis}{_major_tick_mark} = 'in';
+
+    # plorarea
+    $chart->set_plotarea( border => { color => 'black', }, );
+
+    $sheet->insert_chart( $top, $left, $chart );
+
+    return;
+}
+
 sub _find_scale {
     my $self    = shift;
     my $dataset = shift;
