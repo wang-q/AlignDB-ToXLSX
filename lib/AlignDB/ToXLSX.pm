@@ -407,7 +407,7 @@ sub excute_sql {
     # init DBI query
     my $sql_query = $opt->{sql_query};
     my $sth       = $dbh->prepare($sql_query);
-    $sth->execute(@{$bind_value});
+    $sth->execute( @{$bind_value} );
 }
 
 sub check_column {
@@ -660,8 +660,10 @@ sub draw_y {
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
         min             => $x_min_scale,
         max             => $x_max_scale,
+        exists $opt->{cross} ? ( crossing => $opt->{cross}, ) : (),
     );
     $chart->set_y_axis(
         name      => $self->_replace_text( $opt->{y_title} ),
@@ -670,14 +672,11 @@ sub draw_y {
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
         defined $y_scale
         ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
         : (),
     );
-
-    # https://github.com/jmcnamara/excel-writer-xlsx/issues/155
-    $chart->{_x_axis}{_major_tick_mark} = 'in';
-    $chart->{_y_axis}{_major_tick_mark} = 'in';
 
     # plorarea
     $chart->set_plotarea( border => { color => 'black', }, );
@@ -777,6 +776,7 @@ sub draw_2y {
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
         min             => $x_min_scale,
         max             => $x_max_scale,
     );
@@ -787,6 +787,7 @@ sub draw_2y {
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
         defined $y_scale
         ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
         : (),
@@ -798,15 +799,11 @@ sub draw_2y {
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
         defined $y2_scale
         ? ( min => $y2_scale->{min}, max => $y2_scale->{max}, major_unit => $y2_scale->{unit}, )
         : (),
     );
-
-    # https://github.com/jmcnamara/excel-writer-xlsx/issues/155
-    $chart->{_x_axis}{_major_tick_mark}  = 'in';
-    $chart->{_y_axis}{_major_tick_mark}  = 'in';
-    $chart->{_y2_axis}{_major_tick_mark} = 'in';
 
     # plorarea
     $chart->set_plotarea( border => { color => 'black', }, );
@@ -874,6 +871,7 @@ sub draw_xy {
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
         defined $x_scale
         ? ( min => $x_scale->{min}, max => $x_scale->{max}, major_unit => $x_scale->{unit}, )
         : (),
@@ -885,14 +883,11 @@ sub draw_xy {
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
         defined $y_scale
         ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
         : (),
     );
-
-    # https://github.com/jmcnamara/excel-writer-xlsx/issues/155
-    $chart->{_x_axis}{_major_tick_mark} = 'in';
-    $chart->{_y_axis}{_major_tick_mark} = 'in';
 
     # plorarea
     $chart->set_plotarea( border => { color => 'black', }, );
