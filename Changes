@@ -2,13 +2,18 @@ Revision history for AlignDB-ToXLSX
 
 {{$NEXT}}
 
+1.1.1  2016-01-22 02:52:14 CST
+    - Record worksheet cursor in object, row() and column()
+    - s/option/opt/g
+    - Remove write_content_*(). May add later.
+
 1.1.0  2016-01-22 01:12:21 CST
     - Remove hard dependance on DBD::mysql
     - write_header_direct() ==> write_header()
     - Remove write_header_sql(), use sql2names()
     - write_row_direct() ==> write_row()
     - write_content_direct() ==> write_sql()
-    
+
 1.0.4  2016-01-19 06:58:30 CST
     - add draw_xy()
 
