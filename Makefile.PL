@@ -7,7 +7,7 @@ use 5.008001;
 use ExtUtils::MakeMaker;
 
 my %WriteMakefileArgs = (
-  "ABSTRACT" => "Create xlsx files from SQL queries or just arrays.",
+  "ABSTRACT" => "Create xlsx files from arrays or SQL queries.",
   "AUTHOR" => "Qiang Wang <wang-q\@outlook.com>",
   "CONFIGURE_REQUIRES" => {
     "ExtUtils::MakeMaker" => 0
@@ -28,7 +28,7 @@ my %WriteMakefileArgs = (
   "TEST_REQUIRES" => {
     "Test::More" => "0.88"
   },
-  "VERSION" => "1.1.0",
+  "VERSION" => "1.1.1",
   "test" => {
     "TESTS" => "t/*.t"
   }

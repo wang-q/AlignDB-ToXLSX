@@ -1,13 +1,20 @@
 # NAME
 
-AlignDB::ToXLSX - Create xlsx files from SQL queries or just arrays.
+AlignDB::ToXLSX - Create xlsx files from arrays or SQL queries.
 
 # SYNOPSIS
 
+    # Mysql
     my $write_obj = AlignDB::ToXLSX->new(
         outfile => $outfile,
-        mocking => 1,
+        dbh     => $dbh,
     );
+    
+    # MongoDB
+    my $write_obj = AlignDB::ToXLSX->new(
+        outfile => $outfile,
+    );
+    
 
 # AUTHOR
 

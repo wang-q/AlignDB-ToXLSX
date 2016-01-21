@@ -18,6 +18,10 @@ has 'outfile'  => ( is => 'ro', isa => 'Str' );        # output file, autogenera
 has 'workbook' => ( is => 'ro', isa => 'Object' );     # excel workbook object
 has 'format'   => ( is => 'ro', isa => 'HashRef' );    # excel formats
 
+# worksheet cursor
+has 'row'    => ( is => 'rw', isa => 'Num', default => sub {0}, );
+has 'column' => ( is => 'rw', isa => 'Num', default => sub {0}, );
+
 # charts
 has 'font_name' => ( is => 'rw', isa => 'Str', default => sub {'Arial'}, );
 has 'font_size' => ( is => 'rw', isa => 'Num', default => sub {10}, );
@@ -76,6 +80,13 @@ sub BUILD {
     return;
 }
 
+sub increase_row {
+    my $self = shift;
+    my $step = shift || 1;
+
+    $self->{row} += $step;
+}
+
 sub write_header {
     my $self       = shift;
     my $sheet_name = shift;
@@ -86,25 +97,20 @@ sub write_header {
     my $sheet    = $workbook->add_worksheet($sheet_name);
     my $fmt      = $self->format;
 
-    # init table cursor
-    my $sheet_row = $opt->{sheet_row};
-    my $sheet_col = $opt->{sheet_col};
-    my $header    = $opt->{header};
-
-    # query name
+    my $header     = $opt->{header};
     my $query_name = $opt->{query_name};
 
     # create table header
-    for ( my $i = 0; $i < $sheet_col; $i++ ) {
-        $sheet->write( $sheet_row, $i, $query_name, $fmt->{HEADER} );
+    for ( my $i = 0; $i < $self->column; $i++ ) {
+        $sheet->write( $self->row, $i, $query_name, $fmt->{HEADER} );
     }
     for ( my $i = 0; $i < scalar @{$header}; $i++ ) {
-        $sheet->write( $sheet_row, $i + $sheet_col, $header->[$i], $fmt->{HEADER} );
+        $sheet->write( $self->row, $i + $self->column, $header->[$i], $fmt->{HEADER} );
     }
-    $sheet_row++;
     $sheet->freeze_panes( 1, 0 );    # freeze table
 
-    return ( $sheet, $sheet_row );
+    $self->increase_row;
+    return $sheet;
 }
 
 sub sql2names {
@@ -130,14 +136,10 @@ sub write_row {
     my $dbh = $self->dbh;
     my $fmt = $self->format;
 
-    # init table cursor
-    my $sheet_row = $opt->{sheet_row};
-    my $sheet_col = $opt->{sheet_col};
-
     # query name
     my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
-        $sheet->write( $sheet_row, $sheet_col - 1, $query_name, $fmt->{NAME} );
+        $sheet->write( $self->row, $self->column - 1, $query_name, $fmt->{NAME} );
     }
 
     # array_ref
@@ -163,11 +165,11 @@ sub write_row {
 
     # insert table columns
     for ( my $i = 0; $i < scalar @$row; $i++ ) {
-        $sheet->write( $sheet_row, $i + $sheet_col, $row->[$i], $fmt->{$content_format} );
+        $sheet->write( $self->row, $i + $self->column, $row->[$i], $fmt->{$content_format} );
     }
-    $sheet_row += $write_step;
 
-    return ($sheet_row);
+    $self->increase_row($write_step);
+    return;
 }
 
 sub write_sql {
@@ -179,14 +181,10 @@ sub write_sql {
     my $dbh = $self->dbh;
     my $fmt = $self->format;
 
-    # table cursor
-    my $sheet_row = $opt->{sheet_row};
-    my $sheet_col = $opt->{sheet_col};
-
     # query name
     my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
-        $sheet->write( $sheet_row, $sheet_col - 1, $query_name, $fmt->{NAME} );
+        $sheet->write( $self->row, $self->column - 1, $query_name, $fmt->{NAME} );
     }
 
     # bind value
@@ -218,181 +216,33 @@ sub write_sql {
             if ( defined $data ) {
                 push @{ $data->[$i] }, $row[$i];
             }
-            $sheet->write( $sheet_row, $i + $sheet_col, $row[$i], $fmt->{NORMAL} );
+            $sheet->write( $self->row, $i + $self->column, $row[$i], $fmt->{NORMAL} );
         }
-        $sheet_row++;
+        $self->increase_row;
     }
 
-    return ( $sheet_row, $data );
-}
-
-sub write_content_combine {
-    my ( $self, $sheet, $option ) = @_;
-
-    # init table cursor
-    my $sheet_row = $option->{sheet_row};
-    my $sheet_col = $option->{sheet_col};
-    my $sql_query = $option->{sql_query};
-
-    my @combined = @{ $option->{combined} };
-
-    # bind value
-    my $bind_value = $option->{bind_value};
-    unless ( defined $bind_value ) {
-        $bind_value = [];
-    }
-
-    foreach (@combined) {
-        my @range      = @$_;
-        my $in_list    = '(' . join( ',', @range ) . ')';
-        my $sql_query2 = $sql_query . $in_list;
-        my %option     = (
-            sql_query  => $sql_query2,
-            sheet_row  => $sheet_row,
-            sheet_col  => $sheet_col,
-            bind_value => $bind_value,
-        );
-        ($sheet_row) = $self->write_content_direct( $sheet, \%option );
-    }
-    return ($sheet_row);
-}
-
-sub write_content_group {
-    my ( $self, $sheet, $option ) = @_;
-
-    # init table cursor
-    my $sheet_row     = $option->{sheet_row};
-    my $sheet_col     = $option->{sheet_col};
-    my $sql_query     = $option->{sql_query};
-    my $append_column = $option->{append_column};
-
-    # bind value
-    my $bind_value = $option->{bind_value};
-    unless ( defined $bind_value ) {
-        $bind_value = [];
-    }
-
-    my @group = @{ $option->{group} };
-
-    foreach (@group) {
-        my @range      = @$_;
-        my $in_list    = '(' . join( ',', @range ) . ')';
-        my $sql_query2 = $sql_query . $in_list;
-        my $group_name;
-        if ( scalar @range > 1 ) {
-            $group_name = $range[0] . "--" . $range[-1];
-        }
-        else {
-            $group_name = $range[0];
-        }
-        my %option = (
-            sql_query     => $sql_query2,
-            sheet_row     => $sheet_row,
-            sheet_col     => $sheet_col,
-            query_name    => $group_name,
-            append_column => $append_column,
-            bind_value    => $bind_value,
-        );
-        ($sheet_row) = $self->write_content_direct( $sheet, \%option );
-    }
-    return ($sheet_row);
-}
-
-sub write_content_series {
-    my ( $self, $sheet, $option ) = @_;
-
-    # init objects
-    my $dbh = $self->dbh;
-    my $fmt = $self->format;
-
-    # init table cursor
-    my $sheet_row = $option->{sheet_row};
-    my $sheet_col = $option->{sheet_col};
-
-    my $sql_query = $option->{sql_query};
-    my @group     = @{ $option->{group} };
-
-    foreach (@group) {
-        my @range = @$_;
-        my $group_name;
-        if ( scalar @range > 1 ) {
-            $group_name = join "-", @range;
-        }
-        else {
-            $group_name = $range[0];
-        }
-        $sheet_row++;    # add a blank line
-        my %option = (
-            sql_query  => $sql_query,
-            sheet_row  => $sheet_row,
-            sheet_col  => $sheet_col,
-            query_name => $group_name,
-            bind_value => \@range,
-        );
-        ($sheet_row) = $self->write_content_direct( $sheet, \%option );
-    }
-}
-
-sub write_content_highlight {
-    my ( $self, $sheet, $option ) = @_;
-
-    # init
-    my $dbh = $self->dbh;
-    my $fmt = $self->format;
-
-    # init table cursor
-    my $sheet_row = $option->{sheet_row};
-    my $sheet_col = $option->{sheet_col};
-
-    # bind value
-    my $bind_value = $option->{bind_value};
-    unless ( defined $bind_value ) {
-        $bind_value = [];
-    }
-
-    # init DBI query
-    my $sql_query = $option->{sql_query};
-    my $sth       = $dbh->prepare($sql_query);
-    $sth->execute(@$bind_value);
-
-    # insert table columns
-    my $last_number;
-    while ( my @row = $sth->fetchrow_array ) {
-
-        # Highlight 'special' indels
-        my $style = 'NORMAL';
-        if ( defined $last_number ) {
-            if ( $row[1] > $last_number ) {
-                $style = 'HIGHLIGHT';
-            }
-        }
-        $last_number = $row[1];
-        for ( my $i = 0; $i < scalar @row; $i++ ) {
-            $sheet->write( $sheet_row, $i + $sheet_col, $row[$i], $fmt->{$style} );
-        }
-        $sheet_row++;
-    }
+    return $data;
 }
 
 sub make_combine {
-    my ( $self, $option ) = @_;
+    my ( $self, $opt ) = @_;
 
     # init objects
     my $dbh = $self->dbh;
 
     # init parameters
-    my $sql_query  = $option->{sql_query};
-    my $threshold  = $option->{threshold};
-    my $standalone = $option->{standalone};
+    my $sql_query  = $opt->{sql_query};
+    my $threshold  = $opt->{threshold};
+    my $standalone = $opt->{standalone};
 
     # bind value
-    my $bind_value = $option->{bind_value};
+    my $bind_value = $opt->{bind_value};
     unless ( defined $bind_value ) {
         $bind_value = [];
     }
 
     # merge_last
-    my $merge_last = $option->{merge_last};
+    my $merge_last = $opt->{merge_last};
     unless ( defined $merge_last ) {
         $merge_last = 0;
     }
@@ -449,17 +299,17 @@ sub make_combine {
 }
 
 sub make_combine_piece {
-    my ( $self, $option ) = @_;
+    my ( $self, $opt ) = @_;
 
     # init objects
     my $dbh = $self->dbh;
 
     # init parameters
-    my $sql_query = $option->{sql_query};
-    my $piece     = $option->{piece};
+    my $sql_query = $opt->{sql_query};
+    my $piece     = $opt->{piece};
 
     # bind value
-    my $bind_value = $option->{bind_value};
+    my $bind_value = $opt->{bind_value};
     unless ( defined $bind_value ) {
         $bind_value = [];
     }
@@ -506,14 +356,14 @@ sub make_combine_piece {
 }
 
 sub make_last_portion {
-    my ( $self, $option ) = @_;
+    my ( $self, $opt ) = @_;
 
     # init objects
     my $dbh = $self->dbh;
 
     # init parameters
-    my $sql_query = $option->{sql_query};
-    my $portion   = $option->{portion};
+    my $sql_query = $opt->{sql_query};
+    my $portion   = $opt->{portion};
 
     # init DBI query
     my $sth = $dbh->prepare($sql_query);
@@ -543,21 +393,21 @@ sub make_last_portion {
 }
 
 sub excute_sql {
-    my ( $self, $option ) = @_;
+    my ( $self, $opt ) = @_;
 
     # init
     my $dbh = $self->dbh;
 
     # bind value
-    my $bind_value = $option->{bind_value};
+    my $bind_value = $opt->{bind_value};
     unless ( defined $bind_value ) {
         $bind_value = [];
     }
 
     # init DBI query
-    my $sql_query = $option->{sql_query};
+    my $sql_query = $opt->{sql_query};
     my $sth       = $dbh->prepare($sql_query);
-    $sth->execute(@$bind_value);
+    $sth->execute(@{$bind_value});
 }
 
 sub check_column {
@@ -631,19 +481,19 @@ sub quantile {
 }
 
 sub quantile_sql {
-    my ( $self, $option, $part_number ) = @_;
+    my ( $self, $opt, $part_number ) = @_;
 
     # init objects
     my $dbh = $self->dbh;
 
     # bind value
-    my $bind_value = $option->{bind_value};
+    my $bind_value = $opt->{bind_value};
     unless ( defined $bind_value ) {
         $bind_value = [];
     }
 
     # init DBI query
-    my $sql_query = $option->{sql_query};
+    my $sql_query = $opt->{sql_query};
     my $sth       = $dbh->prepare($sql_query);
     $sth->execute(@$bind_value);
 
@@ -739,45 +589,45 @@ sub add_index_sheet {
 }
 
 sub draw_y {
-    my $self   = shift;
-    my $sheet  = shift;
-    my $option = shift;
+    my $self  = shift;
+    my $sheet = shift;
+    my $opt   = shift;
 
     my $workbook   = $self->workbook;
     my $sheet_name = $sheet->get_name;
 
-    my $font_name = $option->{font_name} || $self->font_name;
-    my $font_size = $option->{font_size} || $self->font_size;
-    my $height    = $option->{height}    || $self->height;
-    my $width     = $option->{width}     || $self->width;
+    my $font_name = $opt->{font_name} || $self->font_name;
+    my $font_size = $opt->{font_size} || $self->font_size;
+    my $height    = $opt->{height}    || $self->height;
+    my $width     = $opt->{width}     || $self->width;
 
     # E2
-    my $top  = $option->{top}  || 1;
-    my $left = $option->{left} || 4;
+    my $top  = $opt->{top}  || 1;
+    my $left = $opt->{left} || 4;
 
     # 0 based
-    my $first_row = $option->{first_row};
-    my $last_row  = $option->{last_row};
-    my $x_column  = $option->{x_column};
-    my $y_column  = $option->{y_column};
+    my $first_row = $opt->{first_row};
+    my $last_row  = $opt->{last_row};
+    my $x_column  = $opt->{x_column};
+    my $y_column  = $opt->{y_column};
 
     # Set axes' scale
-    my $x_max_scale = $option->{x_max_scale};
-    my $x_min_scale = $option->{x_min_scale};
+    my $x_max_scale = $opt->{x_max_scale};
+    my $x_min_scale = $opt->{x_min_scale};
     if ( !defined $x_min_scale ) {
         $x_min_scale = 0;
     }
     if ( !defined $x_max_scale ) {
-        my $x_scale_unit = $option->{x_scale_unit};
-        my $x_min_value  = min( @{ $option->{x_data} } );
-        my $x_max_value  = max( @{ $option->{x_data} } );
+        my $x_scale_unit = $opt->{x_scale_unit};
+        my $x_min_value  = min( @{ $opt->{x_data} } );
+        my $x_max_value  = max( @{ $opt->{x_data} } );
         $x_min_scale = int( $x_min_value / $x_scale_unit ) * $x_scale_unit;
         $x_max_scale = ( int( $x_max_value / $x_scale_unit ) + 1 ) * $x_scale_unit;
     }
 
     my $y_scale;
-    if ( exists $option->{y_data} ) {
-        $y_scale = $self->_find_scale( $option->{y_data} );
+    if ( exists $opt->{y_data} ) {
+        $y_scale = $self->_find_scale( $opt->{y_data} );
     }
 
     my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
@@ -804,7 +654,7 @@ sub draw_y {
 
     # set axis
     $chart->set_x_axis(
-        name      => $self->_replace_text( $option->{x_title} ),
+        name      => $self->_replace_text( $opt->{x_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },
@@ -814,7 +664,7 @@ sub draw_y {
         max             => $x_max_scale,
     );
     $chart->set_y_axis(
-        name      => $self->_replace_text( $option->{y_title} ),
+        name      => $self->_replace_text( $opt->{y_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },
@@ -838,51 +688,51 @@ sub draw_y {
 }
 
 sub draw_2y {
-    my $self   = shift;
-    my $sheet  = shift;
-    my $option = shift;
+    my $self  = shift;
+    my $sheet = shift;
+    my $opt   = shift;
 
     my $workbook   = $self->workbook;
     my $sheet_name = $sheet->get_name;
 
-    my $font_name = $option->{font_name} || $self->font_name;
-    my $font_size = $option->{font_size} || $self->font_size;
-    my $height    = $option->{height}    || $self->height;
-    my $width     = $option->{width}     || $self->width;
+    my $font_name = $opt->{font_name} || $self->font_name;
+    my $font_size = $opt->{font_size} || $self->font_size;
+    my $height    = $opt->{height}    || $self->height;
+    my $width     = $opt->{width}     || $self->width;
 
     # E2
-    my $top  = $option->{top}  || 1;
-    my $left = $option->{left} || 4;
+    my $top  = $opt->{top}  || 1;
+    my $left = $opt->{left} || 4;
 
     # 0 based
-    my $first_row = $option->{first_row};
-    my $last_row  = $option->{last_row};
-    my $x_column  = $option->{x_column};
-    my $y_column  = $option->{y_column};
-    my $y2_column = $option->{y2_column};
+    my $first_row = $opt->{first_row};
+    my $last_row  = $opt->{last_row};
+    my $x_column  = $opt->{x_column};
+    my $y_column  = $opt->{y_column};
+    my $y2_column = $opt->{y2_column};
 
     # Set axes' scale
-    my $x_max_scale = $option->{x_max_scale};
-    my $x_min_scale = $option->{x_min_scale};
+    my $x_max_scale = $opt->{x_max_scale};
+    my $x_min_scale = $opt->{x_min_scale};
     if ( !defined $x_min_scale ) {
         $x_min_scale = 0;
     }
     if ( !defined $x_max_scale ) {
-        my $x_scale_unit = $option->{x_scale_unit};
-        my $x_min_value  = min( @{ $option->{x_data} } );
-        my $x_max_value  = max( @{ $option->{x_data} } );
+        my $x_scale_unit = $opt->{x_scale_unit};
+        my $x_min_value  = min( @{ $opt->{x_data} } );
+        my $x_max_value  = max( @{ $opt->{x_data} } );
         $x_min_scale = int( $x_min_value / $x_scale_unit ) * $x_scale_unit;
         $x_max_scale = ( int( $x_max_value / $x_scale_unit ) + 1 ) * $x_scale_unit;
     }
 
     my $y_scale;
-    if ( exists $option->{y_data} ) {
-        $y_scale = $self->_find_scale( $option->{y_data} );
+    if ( exists $opt->{y_data} ) {
+        $y_scale = $self->_find_scale( $opt->{y_data} );
     }
 
     my $y2_scale;
-    if ( exists $option->{y2_data} ) {
-        $y2_scale = $self->_find_scale( $option->{y2_data} );
+    if ( exists $opt->{y2_data} ) {
+        $y2_scale = $self->_find_scale( $opt->{y2_data} );
     }
 
     my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
@@ -921,7 +771,7 @@ sub draw_2y {
 
     # set axis
     $chart->set_x_axis(
-        name      => $self->_replace_text( $option->{x_title} ),
+        name      => $self->_replace_text( $opt->{x_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },
@@ -931,7 +781,7 @@ sub draw_2y {
         max             => $x_max_scale,
     );
     $chart->set_y_axis(
-        name      => $self->_replace_text( $option->{y_title} ),
+        name      => $self->_replace_text( $opt->{y_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },
@@ -942,7 +792,7 @@ sub draw_2y {
         : (),
     );
     $chart->set_y2_axis(
-        name      => $self->_replace_text( $option->{y2_title} ),
+        name      => $self->_replace_text( $opt->{y2_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },
@@ -967,35 +817,35 @@ sub draw_2y {
 }
 
 sub draw_xy {
-    my $self   = shift;
-    my $sheet  = shift;
-    my $option = shift;
+    my $self  = shift;
+    my $sheet = shift;
+    my $opt   = shift;
 
     my $workbook   = $self->workbook;
     my $sheet_name = $sheet->get_name;
 
-    my $font_name = $option->{font_name} || $self->font_name;
-    my $font_size = $option->{font_size} || $self->font_size;
-    my $height    = $option->{height}    || $self->height;
-    my $width     = $option->{width}     || $self->width;
+    my $font_name = $opt->{font_name} || $self->font_name;
+    my $font_size = $opt->{font_size} || $self->font_size;
+    my $height    = $opt->{height}    || $self->height;
+    my $width     = $opt->{width}     || $self->width;
 
     # E2
-    my $top  = $option->{top}  || 1;
-    my $left = $option->{left} || 4;
+    my $top  = $opt->{top}  || 1;
+    my $left = $opt->{left} || 4;
 
     # 0 based
-    my $first_row = $option->{first_row};
-    my $last_row  = $option->{last_row};
-    my $x_column  = $option->{x_column};
-    my $y_column  = $option->{y_column};
+    my $first_row = $opt->{first_row};
+    my $last_row  = $opt->{last_row};
+    my $x_column  = $opt->{x_column};
+    my $y_column  = $opt->{y_column};
 
     my $x_scale;
-    if ( exists $option->{x_data} ) {
-        $x_scale = $self->_find_scale( $option->{x_data} );
+    if ( exists $opt->{x_data} ) {
+        $x_scale = $self->_find_scale( $opt->{x_data} );
     }
     my $y_scale;
-    if ( exists $option->{y_data} ) {
-        $y_scale = $self->_find_scale( $option->{y_data} );
+    if ( exists $opt->{y_data} ) {
+        $y_scale = $self->_find_scale( $opt->{y_data} );
     }
 
     my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
@@ -1018,7 +868,7 @@ sub draw_xy {
 
     # set axis
     $chart->set_x_axis(
-        name      => $self->_replace_text( $option->{x_title} ),
+        name      => $self->_replace_text( $opt->{x_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },
@@ -1029,7 +879,7 @@ sub draw_xy {
         : (),
     );
     $chart->set_y_axis(
-        name      => $self->_replace_text( $option->{y_title} ),
+        name      => $self->_replace_text( $opt->{y_title} ),
         name_font => { name => $self->font_name, size => $self->font_size, },
         num_font  => { name => $self->font_name, size => $self->font_size, },
         line            => { color   => 'black', },

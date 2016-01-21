@@ -1,5 +1,5 @@
 {
-   "abstract" : "Create xlsx files from SQL queries or just arrays.",
+   "abstract" : "Create xlsx files from arrays or SQL queries.",
    "author" : [
       "Qiang Wang <wang-q@outlook.com>"
    ],
@@ -65,6 +65,6 @@
          "web" : "https://github.com/wang-q/AlignDB-ToXLSX"
       }
    },
-   "version" : "1.1.0"
+   "version" : "1.1.1"
 }
 
