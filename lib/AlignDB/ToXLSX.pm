@@ -8,7 +8,7 @@ use Statistics::Descriptive;
 use Chart::Math::Axis;
 use List::MoreUtils qw( any );
 
-our $VERSION = '1.1.1';
+our $VERSION = '1.1.2';
 
 # Mysql dbh
 has 'dbh' => ( is => 'ro', isa => 'Object' );
