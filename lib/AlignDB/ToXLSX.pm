@@ -1103,15 +1103,21 @@ __END__
 
 =head1 NAME
 
-AlignDB::ToXLSX - Create xlsx files from SQL queries or just arrays.
+AlignDB::ToXLSX - Create xlsx files from arrays or SQL queries.
 
 =head1 SYNOPSIS
 
+    # Mysql
     my $write_obj = AlignDB::ToXLSX->new(
         outfile => $outfile,
-        mocking => 1,
+        dbh     => $dbh,
     );
-
+    
+    # MongoDB
+    my $write_obj = AlignDB::ToXLSX->new(
+        outfile => $outfile,
+    );
+    
 =head1 AUTHOR
 
 Qiang Wang <wang-q@outlook.com>
