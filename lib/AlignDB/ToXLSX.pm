@@ -1,30 +1,22 @@
 package AlignDB::ToXLSX;
 use Moose;
 use Carp;
+use YAML qw(Dump Load DumpFile LoadFile);
+
 use Excel::Writer::XLSX;
-use DBI;
 use Statistics::Descriptive;
 use Chart::Math::Axis;
-use List::Util qw(first max maxstr min minstr reduce shuffle sum);
-use List::MoreUtils qw( all any );
-use YAML qw(Dump Load DumpFile LoadFile);
+use List::MoreUtils qw( any );
 
 our $VERSION = '1.0.4';
 
-# mysql
-has 'mysql'  => ( is => 'ro', isa => 'Str' );    # e.g. 'alignDB:202.119.43.5'
-has 'server' => ( is => 'ro', isa => 'Str' );    # e.g. '202.119.43.5'
-has 'db'     => ( is => 'ro', isa => 'Str' );    # e.g. 'alignDB'
-has 'user'   => ( is => 'ro', isa => 'Str' );    # database username
-has 'passwd' => ( is => 'ro', isa => 'Str' );    # database password
-has 'dbh'    => ( is => 'ro', isa => 'Ref' );    # store database handle here
-
-has 'mocking' => ( is => 'ro', isa => 'Bool', default => sub {0}, );    # don't connect to mysql
+# Mysql dbh
+has 'dbh' => ( is => 'ro', isa => 'Object' );
 
 # outfiles
-has 'outfile'  => ( is => 'ro', isa => 'Str' );                         # output file, autogenerable
-has 'workbook' => ( is => 'rw', isa => 'Object' );                      # excel workbook object
-has 'format'   => ( is => 'ro', isa => 'HashRef' );                     # excel formats
+has 'outfile'  => ( is => 'ro', isa => 'Str' );        # output file, autogenerable
+has 'workbook' => ( is => 'ro', isa => 'Object' );     # excel workbook object
+has 'format'   => ( is => 'ro', isa => 'HashRef' );    # excel formats
 
 # charts
 has 'font_name' => ( is => 'rw', isa => 'Str', default => sub {'Arial'}, );
@@ -39,46 +31,15 @@ has 'replace' => ( is => 'rw', isa => 'HashRef', default => sub { {} } );
 sub BUILD {
     my $self = shift;
 
-    # Connect to database
-    if ( $self->mysql ) {
-        my ( $server, $db ) = split ':', $self->mysql;
-        $self->{server} ||= $server;
-        $self->{db}     ||= $db;
-    }
-    elsif ( $self->server and $self->db ) {
-        $self->{mysql} = $self->db . ':' . $self->server;
-    }
-    elsif ( $self->mocking ) {
-
-        # do nothing
-    }
-    else {
-        confess "You should provide either mysql or db-server\n";
-    }
-
-    my $mysql  = $self->mysql;
-    my $user   = $self->user;
-    my $passwd = $self->passwd;
-    my $server = $self->server;
-    my $db     = $self->db;
-
-    my $dbh = {};
-    if ( !$self->mocking ) {
-        $dbh = DBI->connect( "dbi:mysql:$mysql", $user, $passwd )
-            or confess "Cannot connect to MySQL database at $mysql";
-    }
-    $self->{dbh} = $dbh;
-
     # set outfile
     unless ( $self->outfile ) {
-        $self->mysql =~ /^(.+):/;
-        $self->{outfile} = "$1.auto.xlsx";
+        $self->{outfile} = "auto.xlsx";
     }
 
     # Create $workbook object
     my $workbook;
     unless ( $workbook = Excel::Writer::XLSX->new( $self->outfile ) ) {
-        warn "Cannot create Excel file.\n";
+        confess "Cannot create Excel file.\n";
         return;
     }
     $self->{workbook} = $workbook;
@@ -115,8 +76,10 @@ sub BUILD {
     return;
 }
 
-sub write_header_direct {
-    my ( $self, $sheet_name, $option ) = @_;
+sub write_header {
+    my $self       = shift;
+    my $sheet_name = shift;
+    my $opt        = shift;
 
     # init
     my $workbook = $self->workbook;
@@ -124,12 +87,12 @@ sub write_header_direct {
     my $fmt      = $self->format;
 
     # init table cursor
-    my $sheet_row = $option->{sheet_row};
-    my $sheet_col = $option->{sheet_col};
-    my $header    = $option->{header};
+    my $sheet_row = $opt->{sheet_row};
+    my $sheet_col = $opt->{sheet_col};
+    my $header    = $opt->{header};
 
     # query name
-    my $query_name = $option->{query_name};
+    my $query_name = $opt->{query_name};
 
     # create table header
     for ( my $i = 0; $i < $sheet_col; $i++ ) {
@@ -144,74 +107,56 @@ sub write_header_direct {
     return ( $sheet, $sheet_row );
 }
 
-sub write_header_sql {
-    my ( $self, $sheet_name, $option ) = @_;
+sub sql2names {
+    my $self = shift;
+    my $sql  = shift;
 
     # init
-    my $dbh      = $self->dbh;
-    my $workbook = $self->workbook;
-    my $sheet    = $workbook->add_worksheet($sheet_name);
-    my $fmt      = $self->format;
+    my $dbh = $self->dbh;
 
-    # init table cursor
-    my $sheet_row = $option->{sheet_row};
-    my $sheet_col = $option->{sheet_col};
-
-    # query name
-    my $query_name = $option->{query_name};
-
-    # init DBI query
-    my $sql_query = $option->{sql_query};
-    my $sth       = $dbh->prepare($sql_query);
+    my $sth = $dbh->prepare($sql);
     $sth->execute();
+    my @names = @{ $sth->{'NAME'} };
 
-    # create table header
-    my @cols_name = @{ $sth->{'NAME'} };
-    for ( my $i = 0; $i < $sheet_col; $i++ ) {
-        $sheet->write( $sheet_row, $i, $query_name, $fmt->{HEADER} );
-    }
-    for ( my $i = 0; $i < scalar @cols_name; $i++ ) {
-        $sheet->write( $sheet_row, $i + $sheet_col, $cols_name[$i], $fmt->{HEADER} );
-    }
-    $sheet_row++;
-    $sheet->freeze_panes( 1, 0 );    # freeze table
-
-    return ( $sheet, $sheet_row );
+    return @names;
 }
 
-sub write_row_direct {
-    my ( $self, $sheet, $option ) = @_;
+sub write_row {
+    my $self  = shift;
+    my $sheet = shift;
+    my $opt   = shift;
 
     # init
+    my $dbh = $self->dbh;
     my $fmt = $self->format;
 
     # init table cursor
-    my $sheet_row = $option->{sheet_row};
-    my $sheet_col = $option->{sheet_col};
+    my $sheet_row = $opt->{sheet_row};
+    my $sheet_col = $opt->{sheet_col};
 
     # query name
-    my $query_name = $option->{query_name};
+    my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
         $sheet->write( $sheet_row, $sheet_col - 1, $query_name, $fmt->{NAME} );
     }
 
     # array_ref
-    my $row = $option->{row};
+    my $row = $opt->{row};
 
     # content format
-    my $content_format = $option->{content_format};
+    my $content_format = $opt->{content_format};
     unless ( defined $content_format ) {
         $content_format = 'NORMAL';
     }
 
     # reverse write
-    my $write_step = $option->{write_step};
+    my $write_step = $opt->{write_step};
     unless ( defined $write_step ) {
         $write_step = 1;
     }
 
     # bind value
-    my $append_column = $option->{append_column};
+    my $append_column = $opt->{append_column};
     unless ( defined $append_column ) {
         $append_column = [];
     }
@@ -225,70 +170,60 @@ sub write_row_direct {
     return ($sheet_row);
 }
 
-sub write_content_direct {
-    my ( $self, $sheet, $option ) = @_;
+sub write_sql {
+    my $self  = shift;
+    my $sheet = shift;
+    my $opt   = shift;
 
     # init
     my $dbh = $self->dbh;
     my $fmt = $self->format;
 
-    # init table cursor
-    my $sheet_row = $option->{sheet_row};
-    my $sheet_col = $option->{sheet_col};
+    # table cursor
+    my $sheet_row = $opt->{sheet_row};
+    my $sheet_col = $opt->{sheet_col};
 
     # query name
-    my $query_name = $option->{query_name};
+    my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
         $sheet->write( $sheet_row, $sheet_col - 1, $query_name, $fmt->{NAME} );
     }
 
-    # content format
-    my $content_format = $option->{content_format};
-    unless ( defined $content_format ) {
-        $content_format = 'NORMAL';
-    }
-
     # bind value
-    my $bind_value = $option->{bind_value};
-    unless ( defined $bind_value ) {
+    my $bind_value = $opt->{bind_value};
+    if ( !defined $bind_value ) {
         $bind_value = [];
     }
 
-    # reverse write
-    my $write_step = $option->{write_step};
-    unless ( defined $write_step ) {
-        $write_step = 1;
-    }
-
-    # append column
-    my $append_column = $option->{append_column};
-    unless ( defined $append_column ) {
-        $append_column = [];
+    # return $data
+    my $data;
+    if ( exists $opt->{data} ) {
+        $data = [];
     }
 
     # init DBI query
-    my $sql_query = $option->{sql_query};
+    my $sql_query = $opt->{sql_query};
     my $sth       = $dbh->prepare($sql_query);
-    $sth->execute(@$bind_value);
+    $sth->execute( @{$bind_value} );
 
-    # insert table columns
     while ( my @row = $sth->fetchrow_array ) {
+
+        # init $data
+        if ( defined $data and ref($data) eq 'ARRAY' and @{$data} == 0 ) {
+            push @{$data}, [] for @row;
+        }
+
+        # insert table columns
         for ( my $i = 0; $i < scalar @row; $i++ ) {
-            $sheet->write( $sheet_row, $i + $sheet_col, $row[$i], $fmt->{$content_format} );
-        }
-        if ( scalar @$append_column ) {
-            my $appand_row = shift @$append_column;
-            for ( my $i = 0; $i < scalar @$appand_row; $i++ ) {
-                $sheet->write(
-                    $sheet_row,        $i + $sheet_col + scalar(@row),
-                    $appand_row->[$i], $fmt->{$content_format}
-                );
+            if ( defined $data ) {
+                push @{ $data->[$i] }, $row[$i];
             }
+            $sheet->write( $sheet_row, $i + $sheet_col, $row[$i], $fmt->{NORMAL} );
         }
-        $sheet_row += $write_step;
+        $sheet_row++;
     }
 
-    return ($sheet_row);
+    return ( $sheet_row, $data );
 }
 
 sub write_content_combine {
@@ -1149,18 +1084,17 @@ sub _replace_text {
 # instance destructor
 # invoked only as object method
 sub DESTROY {
-    my ($self) = shift;
+    my $self = shift;
 
     # close excel objects
     my $workbook = $self->workbook;
     $workbook->close if $workbook;
 
-    if ( !$self->mocking ) {
+    # close dbh
+    my $dbh = $self->dbh;
+    $dbh->disconnect if $dbh;
 
-        # close dbh
-        my $dbh = $self->dbh;
-        $dbh->disconnect if $dbh;
-    }
+    return;
 }
 
 1;
