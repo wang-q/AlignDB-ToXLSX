@@ -606,10 +606,14 @@ sub draw_y {
     my $left = $opt->{left} || 4;
 
     # 0 based
-    my $first_row = $opt->{first_row};
-    my $last_row  = $opt->{last_row};
-    my $x_column  = $opt->{x_column};
-    my $y_column  = $opt->{y_column};
+    my $first_row     = $opt->{first_row};
+    my $last_row      = $opt->{last_row};
+    my $x_column      = $opt->{x_column};
+    my $y_column      = $opt->{y_column};
+    my $y_last_column = $opt->{y_last_column};
+    unless ( defined $y_last_column ) {
+        $y_last_column = $y_column;
+    }
 
     # Set axes' scale
     my $x_max_scale = $opt->{x_max_scale};
@@ -627,22 +631,23 @@ sub draw_y {
 
     my $y_scale;
     if ( exists $opt->{y_data} ) {
-        $y_scale = $self->_find_scale( $opt->{y_data} );
+        $y_scale = $self->_find_scale( $opt->{y_data}, $first_row, $last_row );
     }
 
-    my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
+    my $chart = $workbook->add_chart(
+        type     => 'scatter',
+        subtype  => 'straight_with_markers',
+        embedded => 1
+    );
 
     # [ $sheetname, $row_start, $row_end, $col_start, $col_end ]
     #  #"=$sheetname" . '!$A$2:$A$7',
-    $chart->add_series(
-        categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
-        values     => [ $sheet_name, $first_row, $last_row, $y_column, $y_column ],
-        line       => {
-            width     => 1.25,
-            dash_type => 'solid',
-        },
-        marker => { type => 'diamond' },
-    );
+    for my $y_col ( $y_column .. $y_last_column ) {
+        $chart->add_series(
+            categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
+            values     => [ $sheet_name, $first_row, $last_row, $y_col,    $y_col ],
+        );
+    }
     $chart->set_size( width => $width, height => $height );
 
     # Remove title and legend
@@ -726,25 +731,25 @@ sub draw_2y {
 
     my $y_scale;
     if ( exists $opt->{y_data} ) {
-        $y_scale = $self->_find_scale( $opt->{y_data} );
+        $y_scale = $self->_find_scale( $opt->{y_data}, $first_row, $last_row );
     }
 
     my $y2_scale;
     if ( exists $opt->{y2_data} ) {
-        $y2_scale = $self->_find_scale( $opt->{y2_data} );
+        $y2_scale = $self->_find_scale( $opt->{y2_data}, $first_row, $last_row );
     }
 
-    my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
+    my $chart = $workbook->add_chart(
+        type     => 'scatter',
+        subtype  => 'straight_with_markers',
+        embedded => 1
+    );
 
     # [ $sheetname, $row_start, $row_end, $col_start, $col_end ]
     #  #"=$sheetname" . '!$A$2:$A$7',
     $chart->add_series(
         categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
         values     => [ $sheet_name, $first_row, $last_row, $y_column, $y_column ],
-        line       => {
-            width     => 1.25,
-            dash_type => 'solid',
-        },
         marker => { type => 'diamond', },
     );
 
@@ -752,10 +757,6 @@ sub draw_2y {
     $chart->add_series(
         categories => [ $sheet_name, $first_row, $last_row, $x_column,  $x_column ],
         values     => [ $sheet_name, $first_row, $last_row, $y2_column, $y2_column ],
-        line       => {
-            width     => 1.25,
-            dash_type => 'solid',
-        },
         marker  => { type => 'square', size => 5, fill => { color => 'white', }, },
         y2_axis => 1,
     );
@@ -838,11 +839,12 @@ sub draw_xy {
 
     my $x_scale;
     if ( exists $opt->{x_data} ) {
-        $x_scale = $self->_find_scale( $opt->{x_data} );
+        $x_scale = $self->_find_scale( $opt->{x_data}, $first_row, $last_row );
+
     }
     my $y_scale;
     if ( exists $opt->{y_data} ) {
-        $y_scale = $self->_find_scale( $opt->{y_data} );
+        $y_scale = $self->_find_scale( $opt->{y_data}, $first_row, $last_row );
     }
 
     my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
@@ -898,12 +900,24 @@ sub draw_xy {
 }
 
 sub _find_scale {
-    my $self    = shift;
-    my $dataset = shift;
+    my $self      = shift;
+    my $dataset   = shift;
+    my $first_row = shift;
+    my $last_row  = shift;
 
     my $axis = Chart::Math::Axis->new;
 
-    $axis->add_data( @{$dataset} );
+    my @data;
+    if ( ref $dataset->[0] eq 'ARRAY' ) {
+        for ( @{$dataset} ) {
+            push @data, splice( @{$_}, $first_row - 1, $last_row - $first_row + 1 );
+        }
+    }
+    else {
+        push @data, splice( @{$dataset}, $first_row - 1, $last_row - $first_row + 1 );
+    }
+
+    $axis->add_data(@data);
     $axis->set_maximum_intervals( $self->max_ticks );
 
     return {
