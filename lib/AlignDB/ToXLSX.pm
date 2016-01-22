@@ -95,17 +95,17 @@ sub write_header {
     # init
     my $workbook = $self->workbook;
     my $sheet    = $workbook->add_worksheet($sheet_name);
-    my $fmt      = $self->format;
+    my $format   = $self->format;
 
     my $header     = $opt->{header};
     my $query_name = $opt->{query_name};
 
     # create table header
     for ( my $i = 0; $i < $self->column; $i++ ) {
-        $sheet->write( $self->row, $i, $query_name, $fmt->{HEADER} );
+        $sheet->write( $self->row, $i, $query_name, $format->{HEADER} );
     }
     for ( my $i = 0; $i < scalar @{$header}; $i++ ) {
-        $sheet->write( $self->row, $i + $self->column, $header->[$i], $fmt->{HEADER} );
+        $sheet->write( $self->row, $i + $self->column, $header->[$i], $format->{HEADER} );
     }
     $sheet->freeze_panes( 1, 0 );    # freeze table
 
@@ -116,12 +116,19 @@ sub write_header {
 sub sql2names {
     my $self = shift;
     my $sql  = shift;
+    my $opt  = shift;
 
     # init
     my $dbh = $self->dbh;
 
+    # bind value
+    my $bind_value = $opt->{bind_value};
+    if ( !defined $bind_value ) {
+        $bind_value = [];
+    }
+
     my $sth = $dbh->prepare($sql);
-    $sth->execute();
+    $sth->execute( @{$bind_value} );
     my @names = @{ $sth->{'NAME'} };
 
     return @names;
@@ -133,13 +140,13 @@ sub write_row {
     my $opt   = shift;
 
     # init
-    my $dbh = $self->dbh;
-    my $fmt = $self->format;
+    my $dbh    = $self->dbh;
+    my $format = $self->format;
 
     # query name
     my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
-        $sheet->write( $self->row, $self->column - 1, $query_name, $fmt->{NAME} );
+        $sheet->write( $self->row, $self->column - 1, $query_name, $format->{NAME} );
     }
 
     # array_ref
@@ -165,7 +172,7 @@ sub write_row {
 
     # insert table columns
     for ( my $i = 0; $i < scalar @$row; $i++ ) {
-        $sheet->write( $self->row, $i + $self->column, $row->[$i], $fmt->{$content_format} );
+        $sheet->write( $self->row, $i + $self->column, $row->[$i], $format->{$content_format} );
     }
 
     $self->increase_row($write_step);
@@ -178,13 +185,13 @@ sub write_sql {
     my $opt   = shift;
 
     # init
-    my $dbh = $self->dbh;
-    my $fmt = $self->format;
+    my $dbh    = $self->dbh;
+    my $format = $self->format;
 
     # query name
     my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
-        $sheet->write( $self->row, $self->column - 1, $query_name, $fmt->{NAME} );
+        $sheet->write( $self->row, $self->column - 1, $query_name, $format->{NAME} );
     }
 
     # bind value
@@ -193,30 +200,30 @@ sub write_sql {
         $bind_value = [];
     }
 
-    # return $data
-    my $data;
-    if ( exists $opt->{data} ) {
-        $data = [];
-    }
-
     # init DBI query
     my $sql_query = $opt->{sql_query};
     my $sth       = $dbh->prepare($sql_query);
     $sth->execute( @{$bind_value} );
 
-    while ( my @row = $sth->fetchrow_array ) {
-
-        # init $data
-        if ( defined $data and ref($data) eq 'ARRAY' and @{$data} == 0 ) {
-            push @{$data}, [] for @row;
+    # init $data
+    my $data;
+    if ( exists $opt->{data} ) {
+        if ( defined $opt->{data} and ref( $opt->{data} ) eq 'ARRAY' ) {
+            $data = $opt->{data};
         }
+        else {
+            $data = [];
+            push @{$data}, [] for @{ $sth->{'NAME'} };
+        }
+    }
 
-        # insert table columns
+    # insert table rows
+    while ( my @row = $sth->fetchrow_array ) {
         for ( my $i = 0; $i < scalar @row; $i++ ) {
-            if ( defined $data ) {
+            if ( exists $opt->{data} ) {
                 push @{ $data->[$i] }, $row[$i];
             }
-            $sheet->write( $self->row, $i + $self->column, $row[$i], $fmt->{NORMAL} );
+            $sheet->write( $self->row, $i + $self->column, $row[$i], $format->{NORMAL} );
         }
         $self->increase_row;
     }
@@ -225,7 +232,8 @@ sub write_sql {
 }
 
 sub make_combine {
-    my ( $self, $opt ) = @_;
+    my $self = shift;
+    my $opt  = shift;
 
     # init objects
     my $dbh = $self->dbh;
@@ -556,7 +564,7 @@ sub add_index_sheet {
     my $self = shift;
 
     my $workbook = $self->workbook;
-    my $fmt      = $self->format;
+    my $format   = $self->format;
 
     # existing sheets
     my @sheets = $workbook->sheets();
@@ -573,16 +581,17 @@ sub add_index_sheet {
     #                                            localtime(time);
     my $date = sprintf "%4d-%02d-%02dT%02d:%02d", (localtime)[5] + 1900, (localtime)[4] + 1,
         (localtime)[ 3, 2, 1 ];
-    $index_sheet->write_date_time( 'A1', $date, $fmt->{DATE} );
+    $index_sheet->write_date_time( 'A1', $date, $format->{DATE} );
 
     for my $i ( 0 .. $#sheets ) {
         my $cur_sheet = $sheets[$i];
         my $cur_name  = $cur_sheet->get_name;
 
         # $worksheet->write_url( $row, $col, $url, $format, $label )
-        $index_sheet->write_url( $i + 1, 0, "internal:$cur_name!A1", $fmt->{URL}, $cur_name );
+        $index_sheet->write_url( $i + 1, 0, "internal:$cur_name!A1", $format->{URL}, $cur_name );
 
-        $cur_sheet->write_url( "A1", "internal:INDEX!A" . ( $i + 2 ), $fmt->{URLHEADER}, "INDEX" );
+        $cur_sheet->write_url( "A1", "internal:INDEX!A" . ( $i + 2 ),
+            $format->{URLHEADER}, "INDEX" );
     }
 
     return;
@@ -750,14 +759,13 @@ sub draw_2y {
     $chart->add_series(
         categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
         values     => [ $sheet_name, $first_row, $last_row, $y_column, $y_column ],
-        marker => { type => 'diamond', },
     );
 
     # second Y axis
     $chart->add_series(
         categories => [ $sheet_name, $first_row, $last_row, $x_column,  $x_column ],
         values     => [ $sheet_name, $first_row, $last_row, $y2_column, $y2_column ],
-        marker  => { type => 'square', size => 5, fill => { color => 'white', }, },
+        marker  => { type => 'square', size => 6, fill => { color => 'white', }, },
         y2_axis => 1,
     );
     $chart->set_size( width => $width, height => $height );
@@ -910,11 +918,13 @@ sub _find_scale {
     my @data;
     if ( ref $dataset->[0] eq 'ARRAY' ) {
         for ( @{$dataset} ) {
-            push @data, splice( @{$_}, $first_row - 1, $last_row - $first_row + 1 );
+            my @copy = @{$_};
+            push @data, splice( @copy, $first_row - 1, $last_row - $first_row + 1 );
         }
     }
     else {
-        push @data, splice( @{$dataset}, $first_row - 1, $last_row - $first_row + 1 );
+        my @copy = @{$dataset};
+        push @data, splice( @copy, $first_row - 1, $last_row - $first_row + 1 );
     }
 
     $axis->add_data(@data);
