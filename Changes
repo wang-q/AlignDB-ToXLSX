@@ -2,6 +2,10 @@ Revision history for AlignDB-ToXLSX
 
 {{$NEXT}}
 
+1.1.3  2016-01-22 21:34:04 CST
+    - y_last_column in draw_y()
+    - better _find_scale()
+
 1.1.2  2016-01-22 03:48:56 CST
     - major_tick_mark => 'inside'
     - $opt->{cross} for draw_y()
