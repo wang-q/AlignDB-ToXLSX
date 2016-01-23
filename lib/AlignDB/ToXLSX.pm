@@ -87,6 +87,13 @@ sub increase_row {
     $self->{row} += $step;
 }
 
+sub increase_column {
+    my $self = shift;
+    my $step = shift || 1;
+
+    $self->{column} += $step;
+}
+
 sub write_header {
     my $self       = shift;
     my $sheet_name = shift;
@@ -152,30 +159,37 @@ sub write_row {
     # array_ref
     my $row = $opt->{row};
 
-    # content format
-    my $content_format = $opt->{content_format};
-    unless ( defined $content_format ) {
-        $content_format = 'NORMAL';
-    }
-
-    # reverse write
-    my $write_step = $opt->{write_step};
-    unless ( defined $write_step ) {
-        $write_step = 1;
-    }
-
-    # bind value
-    my $append_column = $opt->{append_column};
-    unless ( defined $append_column ) {
-        $append_column = [];
-    }
-
-    # insert table columns
+    # insert table
     for ( my $i = 0; $i < scalar @$row; $i++ ) {
-        $sheet->write( $self->row, $i + $self->column, $row->[$i], $format->{$content_format} );
+        $sheet->write( $self->row, $i + $self->column, $row->[$i], $format->{NORMAL} );
     }
 
-    $self->increase_row($write_step);
+    $self->increase_row;
+    return;
+}
+
+sub write_column {
+    my $self  = shift;
+    my $sheet = shift;
+    my $opt   = shift;
+
+    # init
+    my $dbh    = $self->dbh;
+    my $format = $self->format;
+
+    # query name
+    my $query_name = $opt->{query_name};
+    if ( defined $query_name ) {
+        $sheet->write( $self->row - 1, $self->column, $query_name, $format->{NAME} );
+    }
+
+    # array_ref
+    my $column = $opt->{column};
+
+    # insert table
+    $sheet->write( $self->row, $self->column, [$column], $format->{NORMAL} );
+
+    $self->increase_column;
     return;
 }
 
@@ -907,6 +921,108 @@ sub draw_xy {
     return;
 }
 
+sub draw_dd {
+    my $self  = shift;
+    my $sheet = shift;
+    my $opt   = shift;
+
+    my $workbook   = $self->workbook;
+    my $sheet_name = $sheet->get_name;
+
+    my $font_name = $opt->{font_name} || $self->font_name;
+    my $font_size = $opt->{font_size} || $self->font_size;
+    my $height    = $opt->{height}    || $self->height;
+    my $width     = $opt->{width}     || $self->width;
+
+    # E2
+    my $top  = $opt->{top}  || 1;
+    my $left = $opt->{left} || 4;
+
+    # 0 based
+    my $first_row     = $opt->{first_row};
+    my $last_row      = $opt->{last_row};
+    my $x_column      = $opt->{x_column};
+    my $y_column      = $opt->{y_column};
+    my $y_last_column = $opt->{y_last_column};
+    unless ( defined $y_last_column ) {
+        $y_last_column = $y_column;
+    }
+
+    # Set axes' scale
+    my $x_max_scale = $opt->{x_max_scale};
+    my $x_min_scale = $opt->{x_min_scale};
+    if ( !defined $x_min_scale ) {
+        $x_min_scale = 0;
+    }
+    if ( !defined $x_max_scale ) {
+        my $x_scale_unit = $opt->{x_scale_unit};
+        my $x_min_value  = min( @{ $opt->{x_data} } );
+        my $x_max_value  = max( @{ $opt->{x_data} } );
+        $x_min_scale = int( $x_min_value / $x_scale_unit ) * $x_scale_unit;
+        $x_max_scale = ( int( $x_max_value / $x_scale_unit ) + 1 ) * $x_scale_unit;
+    }
+
+    my $y_scale;
+    if ( exists $opt->{y_data} ) {
+        $y_scale = $self->_find_scale( $opt->{y_data} );
+    }
+
+    my $chart = $workbook->add_chart(
+        type     => 'line',
+        embedded => 1
+    );
+
+    # [ $sheetname, $row_start, $row_end, $col_start, $col_end ]
+    #  #"=$sheetname" . '!$A$2:$A$7',
+    for my $y_col ( $y_column .. $y_last_column ) {
+        $chart->add_series(
+            categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
+            values     => [ $sheet_name, $first_row, $last_row, $y_col,    $y_col ],
+        );
+    }
+    $chart->set_size( width => $width, height => $height );
+
+    # Remove title and legend
+    $chart->set_title( none => 1 );
+    $chart->set_legend( none => 1 );
+
+    # Blank data is shown as a gap
+    $chart->show_blanks_as('gap');
+
+    # set axis
+    $chart->set_x_axis(
+        name      => $self->_replace_text( $opt->{x_title} ),
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
+        min             => $x_min_scale,
+        max             => $x_max_scale,
+        exists $opt->{cross} ? ( crossing => $opt->{cross}, ) : (),
+    );
+    $chart->set_y_axis(
+        name      => $self->_replace_text( $opt->{y_title} ),
+        name_font => { name => $self->font_name, size => $self->font_size, },
+        num_font  => { name => $self->font_name, size => $self->font_size, },
+        line            => { color   => 'black', },
+        major_gridlines => { visible => 0, },
+        minor_gridlines => { visible => 0, },
+        major_tick_mark => 'inside',
+        defined $y_scale
+        ? ( min => $y_scale->{min}, max => $y_scale->{max}, major_unit => $y_scale->{unit}, )
+        : (),
+    );
+
+    # plorarea
+    $chart->set_plotarea( border => { color => 'black', }, );
+
+    $sheet->insert_chart( $top, $left, $chart );
+
+    return;
+}
+
 sub _find_scale {
     my $self      = shift;
     my $dataset   = shift;
@@ -916,15 +1032,27 @@ sub _find_scale {
     my $axis = Chart::Math::Axis->new;
 
     my @data;
-    if ( ref $dataset->[0] eq 'ARRAY' ) {
-        for ( @{$dataset} ) {
-            my @copy = @{$_};
-            push @data, splice( @copy, $first_row - 1, $last_row - $first_row + 1 );
+    if ( !defined $first_row ) {
+        if ( ref $dataset->[0] eq 'ARRAY' ) {
+            for ( @{$dataset} ) {
+                push @data, @{$_};
+            }
+        }
+        else {
+            push @data, @{$dataset};
         }
     }
     else {
-        my @copy = @{$dataset};
-        push @data, splice( @copy, $first_row - 1, $last_row - $first_row + 1 );
+        if ( ref $dataset->[0] eq 'ARRAY' ) {
+            for ( @{$dataset} ) {
+                my @copy = @{$_};
+                push @data, splice( @copy, $first_row - 1, $last_row - $first_row + 1 );
+            }
+        }
+        else {
+            my @copy = @{$dataset};
+            push @data, splice( @copy, $first_row - 1, $last_row - $first_row + 1 );
+        }
     }
 
     $axis->add_data(@data);
