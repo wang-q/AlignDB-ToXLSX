@@ -6,6 +6,7 @@ use YAML qw(Dump Load DumpFile LoadFile);
 use Excel::Writer::XLSX;
 use Statistics::Descriptive;
 use Chart::Math::Axis;
+use List::Util qw(min max);
 use List::MoreUtils qw( any );
 
 our $VERSION = '1.1.5';
@@ -849,6 +850,9 @@ sub draw_xy {
     my $height    = $opt->{height}    || $self->height;
     my $width     = $opt->{width}     || $self->width;
 
+    # trendline
+    my $add_trend = $opt->{add_trend};
+
     # E2
     my $top  = $opt->{top}  || 1;
     my $left = $opt->{left} || 4;
@@ -877,6 +881,13 @@ sub draw_xy {
         categories => [ $sheet_name, $first_row, $last_row, $x_column, $x_column ],
         values     => [ $sheet_name, $first_row, $last_row, $y_column, $y_column ],
         marker => { type => 'diamond' },
+        $add_trend
+        ? ( trendline => {
+                type => 'linear',
+                name => 'Linear Trend',
+            }
+            )
+        : (),
     );
     $chart->set_size( width => $width, height => $height );
 
