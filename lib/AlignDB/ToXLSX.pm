@@ -9,7 +9,7 @@ use Chart::Math::Axis;
 use List::Util qw(min max);
 use List::MoreUtils qw( any );
 
-our $VERSION = '1.1.5';
+our $VERSION = '1.1.6';
 
 # Mysql dbh
 has 'dbh' => ( is => 'ro', isa => 'Object' );
