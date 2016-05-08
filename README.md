@@ -9,12 +9,11 @@ AlignDB::ToXLSX - Create xlsx files from arrays or SQL queries.
         outfile => $outfile,
         dbh     => $dbh,
     );
-    
+
     # MongoDB
     my $write_obj = AlignDB::ToXLSX->new(
         outfile => $outfile,
     );
-    
 
 # AUTHOR
 

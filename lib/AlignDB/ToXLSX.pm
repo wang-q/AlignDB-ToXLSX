@@ -95,6 +95,7 @@ sub increase_column {
     $self->{column} += $step;
 }
 
+#@returns Excel::Writer::XLSX::Worksheet
 sub write_header {
     my $self       = shift;
     my $sheet_name = shift;
@@ -1120,12 +1121,12 @@ AlignDB::ToXLSX - Create xlsx files from arrays or SQL queries.
         outfile => $outfile,
         dbh     => $dbh,
     );
-    
+
     # MongoDB
     my $write_obj = AlignDB::ToXLSX->new(
         outfile => $outfile,
     );
-    
+
 =head1 AUTHOR
 
 Qiang Wang <wang-q@outlook.com>
