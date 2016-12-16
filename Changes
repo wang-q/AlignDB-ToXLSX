@@ -2,6 +2,9 @@ Revision history for AlignDB-ToXLSX
 
 {{$NEXT}}
 
+1.1.7 2016-12-16T00:31:19Z
+    - Switch to Minilla
+
 1.1.6  2016-01-28 01:32:44 CST
     - trendline in draw_xy()
 
