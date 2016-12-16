@@ -3,7 +3,7 @@ requires 'Excel::Writer::XLSX';
 requires 'DBI';
 requires 'Statistics::Descriptive';
 requires 'Chart::Math::Axis';
-requires 'YAML';
+requires 'YAML::Syck';
 requires 'List::MoreUtils';
 requires 'perl', '5.008001';
 

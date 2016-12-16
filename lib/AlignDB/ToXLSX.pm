@@ -1,7 +1,7 @@
 package AlignDB::ToXLSX;
 use Moose;
 use Carp;
-use YAML qw(Dump Load DumpFile LoadFile);
+use YAML::Syck;
 
 use Excel::Writer::XLSX;
 use Statistics::Descriptive;
