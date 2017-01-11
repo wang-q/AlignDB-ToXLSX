@@ -29,7 +29,7 @@ Revision history for AlignDB-ToXLSX
     - Remove write_content_*(). May add later.
 
 1.1.0  2016-01-22 01:12:21 CST
-    - Remove hard dependance on DBD::mysql
+    - Remove hard dependency on DBD::mysql
     - write_header_direct() ==> write_header()
     - Remove write_header_sql(), use sql2names()
     - write_row_direct() ==> write_row()
