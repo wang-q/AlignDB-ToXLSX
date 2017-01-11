@@ -1,1 +1,2 @@
 name = "AlignDB-ToXLSX"
+badges = ['travis', 'codecov', 'metacpan']

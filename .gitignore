@@ -9,16 +9,20 @@ blib
 /.build
 /_build_params
 /Build
+/Build.bat
 !Build/
 !META.json
 !LICENSE
 
+!.travis.yml
+
+# IDE
+.idea
 .komodotools
 
 *.xls
 *.xlsx
 *.csv
-*.bak
 
 # put any other files you don't want to check in here,
 # such as .DS_Store (OSX), *.bak, etc.
@@ -26,4 +30,3 @@ blib
 *.log
 *.bak
 *.swp
-/Build.bat
