@@ -137,7 +137,10 @@ sub sql2names {
     }
 
     #@type DBI
-    my $sth = $self->dbh->prepare($sql);
+    my $dbh = $self->{dbh};
+
+    #@type DBI
+    my $sth = $dbh->prepare($sql);
     $sth->execute( @{$bind_value} );
     my @names = @{ $sth->{'NAME'} };
 
@@ -224,7 +227,10 @@ sub write_sql {
     my $sql_query = $opt->{sql_query};
 
     #@type DBI
-    my $sth = $self->dbh->prepare($sql_query);
+    my $dbh = $self->{dbh};
+
+    #@type DBI
+    my $sth = $dbh->prepare($sql_query);
     $sth->execute( @{$bind_value} );
 
     # init $data
@@ -276,7 +282,10 @@ sub make_combine {
 
     # init DBI query
     #@type DBI
-    my $sth = $self->dbh->prepare($sql_query);
+    my $dbh = $self->{dbh};
+
+    #@type DBI
+    my $sth = $dbh->prepare($sql_query);
     $sth->execute(@$bind_value);
 
     my @row_count = ();
@@ -329,6 +338,9 @@ sub make_combine {
 sub make_combine_piece {
     my ( $self, $opt ) = @_;
 
+    #@type DBI
+    my $dbh = $self->{dbh};
+
     # init parameters
     my $sql_query = $opt->{sql_query};
     my $piece     = $opt->{piece};
@@ -341,7 +353,7 @@ sub make_combine_piece {
 
     # init DBI query
     #@type DBI
-    my $sth = $self->dbh->prepare($sql_query);
+    my $sth = $dbh->prepare($sql_query);
     $sth->execute(@$bind_value);
 
     my @row_count = ();
@@ -384,13 +396,16 @@ sub make_combine_piece {
 sub make_last_portion {
     my ( $self, $opt ) = @_;
 
+    #@type DBI
+    my $dbh = $self->{dbh};
+
     # init parameters
     my $sql_query = $opt->{sql_query};
     my $portion   = $opt->{portion};
 
     # init DBI query
     #@type DBI
-    my $sth = $self->dbh->prepare($sql_query);
+    my $sth = $dbh->prepare($sql_query);
     $sth->execute;
 
     my @row_count = ();
@@ -429,7 +444,10 @@ sub excute_sql {
     my $sql_query = $opt->{sql_query};
 
     #@type DBI
-    my $sth = $self->dbh->prepare($sql_query);
+    my $dbh = $self->{dbh};
+
+    #@type DBI
+    my $sth = $dbh->prepare($sql_query);
     $sth->execute( @{$bind_value} );
 }
 
@@ -511,6 +529,9 @@ sub quantile {
 sub quantile_sql {
     my ( $self, $opt, $part_number ) = @_;
 
+    #@type DBI
+    my $dbh = $self->{dbh};
+
     # bind value
     my $bind_value = $opt->{bind_value};
     unless ( defined $bind_value ) {
@@ -521,7 +542,7 @@ sub quantile_sql {
     my $sql_query = $opt->{sql_query};
 
     #@type DBI
-    my $sth = $self->dbh->prepare($sql_query);
+    my $sth = $dbh->prepare($sql_query);
     $sth->execute(@$bind_value);
 
     my @data;
@@ -539,7 +560,10 @@ sub calc_threshold {
     my ( $combine, $piece );
 
     #@type DBI
-    my $sth = $self->dbh->prepare(
+    my $dbh = $self->{dbh};
+
+    #@type DBI
+    my $sth = $dbh->prepare(
         q{
         SELECT SUM(FLOOR(align_comparables / 500) * 500)
         FROM align
