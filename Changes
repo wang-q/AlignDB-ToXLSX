@@ -2,6 +2,11 @@ Revision history for AlignDB-ToXLSX
 
 {{$NEXT}}
 
+1.2.0 2017-01-11T15:44:53Z
+    - Release to CPAN
+    - Improve test coverage
+    - Travis CI
+
 1.1.7 2016-12-16T00:31:19Z
     - Switch to Minilla
 
