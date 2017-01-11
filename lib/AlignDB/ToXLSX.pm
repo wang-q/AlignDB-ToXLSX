@@ -6,8 +6,8 @@ use YAML::Syck;
 use Excel::Writer::XLSX;
 use Statistics::Descriptive;
 use Chart::Math::Axis;
-use List::Util;
-use List::MoreUtils qw( any );
+use List::Util qw();
+use List::MoreUtils qw();
 
 our $VERSION = '1.1.7';
 
@@ -297,7 +297,7 @@ sub make_combine {
     my @temp_combined = ();
     my $temp_count    = 0;
     foreach my $row_ref (@row_count) {
-        if ( any { $_ eq $row_ref->[0] } @{$standalone} ) {
+        if ( List::MoreUtils::PP::any { $_ eq $row_ref->[0] } @{$standalone} ) {
             push @combined, [ $row_ref->[0] ];
         }
         elsif ( $temp_count < $threshold ) {
@@ -464,7 +464,7 @@ sub check_column {
         # table names are quoted by ` (back-quotes) which is the
         #   quote_identifier
         my $table_name = "`$table`";
-        unless ( any { $_ =~ /$table_name/i } @table_names ) {
+        unless ( List::MoreUtils::PP::any { $_ =~ /$table_name/i } @table_names ) {
             print " " x 4, "Table $table does not exist\n";
             return 0;
         }
@@ -680,7 +680,7 @@ sub draw_y {
     if ( !defined $x_min_scale ) {
         $x_min_scale = 0;
     }
-    if ( !defined $x_max_scale ) {
+    if ( !defined $x_max_scale and exists $opt->{x_scale_unit} ) {
         my $x_scale_unit = $opt->{x_scale_unit};
         my $x_min_value  = List::Util::min( @{ $opt->{x_data} } );
         my $x_max_value  = List::Util::max( @{ $opt->{x_data} } );
@@ -784,7 +784,7 @@ sub draw_2y {
     if ( !defined $x_min_scale ) {
         $x_min_scale = 0;
     }
-    if ( !defined $x_max_scale ) {
+    if ( !defined $x_max_scale and exists $opt->{x_scale_unit} ) {
         my $x_scale_unit = $opt->{x_scale_unit};
         my $x_min_value  = List::Util::min( @{ $opt->{x_data} } );
         my $x_max_value  = List::Util::max( @{ $opt->{x_data} } );
@@ -1012,7 +1012,7 @@ sub draw_dd {
     if ( !defined $x_min_scale ) {
         $x_min_scale = 0;
     }
-    if ( !defined $x_max_scale ) {
+    if ( !defined $x_max_scale and exists $opt->{x_scale_unit} ) {
         my $x_scale_unit = $opt->{x_scale_unit};
         my $x_min_value  = List::Util::min( @{ $opt->{x_data} } );
         my $x_max_value  = List::Util::max( @{ $opt->{x_data} } );
