@@ -10,7 +10,7 @@ use AlignDB::ToXLSX;
 
 # cd ~/Scripts/alignDB
 # perl util/query_sql.pl -d ScervsRM11_1a_Spar -t csv -o isw.csv \
-#     -q "SELECT isw_id, isw_distance, isw_pi FROM isw LIMIT 1000"
+#     -q "SELECT isw_id, isw_length, isw_distance, isw_pi FROM isw LIMIT 1000"
 
 my $temp = Path::Tiny->tempfile;
 
@@ -23,7 +23,7 @@ my $temp = Path::Tiny->tempfile;
         file           => "t/isw.csv",
         skip_first_row => 1,
         quote_char     => '',
-        col_names      => [qw{ isw_id isw_distance isw_pi }],
+        col_names      => [qw{ isw_id isw_length isw_distance isw_pi }],
     };
 
     my $sql_query = q{
@@ -80,6 +80,6 @@ my $temp = Path::Tiny->tempfile;
     is( $sheet->{Cells}[22][2]{Val}, 15,      "Cell content 3" );
 }
 
-ok(1);
+#ok(1);
 
 done_testing();
