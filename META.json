@@ -43,7 +43,6 @@
       "runtime" : {
          "requires" : {
             "Chart::Math::Axis" : "0",
-            "DBI" : "0",
             "Excel::Writer::XLSX" : "0",
             "List::MoreUtils" : "0",
             "Moose" : "0",
@@ -54,6 +53,7 @@
       },
       "test" : {
          "requires" : {
+            "Spreadsheet::XLSX" : "0.15",
             "Test::More" : "0.88"
          }
       }

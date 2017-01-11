@@ -1,3 +1,4 @@
+[![Build Status](https://travis-ci.org/wang-q/AlignDB-ToXLSX.svg?branch=master)](https://travis-ci.org/wang-q/AlignDB-ToXLSX) [![Coverage Status](http://codecov.io/github/wang-q/AlignDB-ToXLSX/coverage.svg?branch=master)](https://codecov.io/github/wang-q/AlignDB-ToXLSX?branch=master) [![MetaCPAN Release](https://badge.fury.io/pl/AlignDB-ToXLSX.svg)](https://metacpan.org/release/AlignDB-ToXLSX)
 # NAME
 
 AlignDB::ToXLSX - Create xlsx files from arrays or SQL queries.
