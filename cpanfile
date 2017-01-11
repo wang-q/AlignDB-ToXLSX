@@ -10,4 +10,6 @@ on test => sub {
     requires 'Test::More', 0.88;
     requires 'Path::Tiny', '0.076';
     requires 'Spreadsheet::XLSX', '0.15';
+    requires 'DBI';
+    requires 'DBD::CSV';
 };
