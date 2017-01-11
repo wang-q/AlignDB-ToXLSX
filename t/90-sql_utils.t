@@ -56,7 +56,29 @@ my $temp = Path::Tiny->tempfile;
                 merge_last => 1,
             }
         );
-        is( scalar( @{$combined} ), 10, "combined pieces" );
+        is( scalar( @{$combined} ), 10, "make_combine" );
+    }
+
+    {    # make_combine_piece
+        my $sql_query = q{
+            SELECT
+                isw.isw_id,
+                isw.isw_length
+            FROM
+                isw
+            WHERE
+                isw.isw_distance <= 100
+            ORDER BY
+                isw.isw_id
+        };
+
+        my $pieces = $toxlsx->make_combine_piece(
+            {   sql_query => $sql_query,
+                piece     => 20,
+            }
+        );
+        is( scalar( @{$pieces} ), 20, "make_combine_piece" );
+        ok( abs( 1 - scalar( @{ $pieces->[0] } ) / 50 ) < 0.1, "make_combine_piece" );
     }
 }
 
