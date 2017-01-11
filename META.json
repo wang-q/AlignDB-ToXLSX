@@ -53,6 +53,7 @@
       },
       "test" : {
          "requires" : {
+            "Archive::Zip" : "0",
             "DBD::CSV" : "0",
             "DBI" : "0",
             "Path::Tiny" : "0.076",

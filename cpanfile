@@ -12,4 +12,5 @@ on test => sub {
     requires 'Spreadsheet::XLSX', '0.15';
     requires 'DBI';
     requires 'DBD::CSV';
+    requires 'Archive::Zip';
 };

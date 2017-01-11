@@ -42,10 +42,11 @@ my $temp = Path::Tiny->tempfile;
     };
 
     my $toxlsx = AlignDB::ToXLSX->new(
-        dbh     => $dbh,
+        dbh => $dbh,
+
         outfile => $temp->stringify,
 
-        #        outfile => "03.xlsx",
+        #                outfile => "03.xlsx",
     );
 
     my $sheet_name = 'd1_pi';
@@ -56,14 +57,68 @@ my $temp = Path::Tiny->tempfile;
         $sheet = $toxlsx->write_header( $sheet_name, { header => \@names, } );
     }
 
-    my $data;
-    {    # content
+    my $data;    # for scales
+    {            # content
         $data = $toxlsx->write_sql(
             $sheet,
             {   sql_query => $sql_query,
                 data      => 1,
             }
         );
+    }
+
+    {            # draw_y
+        my %opt = (
+            x_column    => 0,
+            y_column    => 1,
+            first_row   => 2,
+            last_row    => 17,
+            x_max_scale => 15,
+            y_data      => $data->[1],
+            x_title     => "Distance to indels (d1)",
+            y_title     => "Nucleotide diversity",
+            top         => 1,
+            left        => 4,
+        );
+
+        $toxlsx->draw_y( $sheet, \%opt );
+    }
+
+    {    # draw_2y
+        my %opt = (
+            x_column    => 0,
+            y_column    => 1,
+            first_row   => 2,
+            last_row    => 17,
+            x_max_scale => 15,
+            y_data      => $data->[1],
+            x_title     => "Distance to indels (d1)",
+            y_title     => "Nucleotide diversity",
+            y2_column   => 2,
+            y2_data     => $data->[2],
+            y2_title    => "Count",
+            top         => 1 + 18,
+            left        => 4,
+        );
+
+        $toxlsx->draw_2y( $sheet, \%opt );
+    }
+
+    {    # draw_xy
+        my %opt = (
+            x_column  => 0,
+            y_column  => 1,
+            first_row => 2,
+            last_row  => 17,
+            x_data    => $data->[0],
+            y_data    => $data->[1],
+            x_title   => "Distance to indels (d1)",
+            y_title   => "Nucleotide diversity",
+            top       => 1 + 18 * 2,
+            left      => 4,
+        );
+
+        $toxlsx->draw_xy( $sheet, \%opt );
     }
 
 }
@@ -80,6 +135,18 @@ my $temp = Path::Tiny->tempfile;
     is( $sheet->{Cells}[22][2]{Val}, 15,      "Cell content 3" );
 }
 
-#ok(1);
+{    # chech chart*.xml exist
+    my $zipobj = Archive::Zip->new();
+    $zipobj->read( $temp->stringify );
+
+    my @filenames = $zipobj->memberNames();
+
+    #    print YAML::Syck::Dump \@filenames;
+    ok( scalar( grep {/chart1\.xml/} @filenames ), "chart 1" );
+    ok( scalar( grep {/chart2\.xml/} @filenames ), "chart 2" );
+    ok( scalar( grep {/chart2\.xml/} @filenames ), "chart 3" );
+}
+
+ok(1);    # for manual check, need at least 1 test.
 
 done_testing();
