@@ -37,13 +37,13 @@ sub BUILD {
     my $self = shift;
 
     # set outfile
-    unless ( $self->outfile ) {
+    unless ( $self->{outfile} ) {
         $self->{outfile} = "auto.xlsx";
     }
 
     # Create $workbook object
     my $workbook;
-    unless ( $workbook = Excel::Writer::XLSX->new( $self->outfile ) ) {
+    unless ( $workbook = Excel::Writer::XLSX->new( $self->{outfile} ) ) {
         confess "Cannot create Excel file.\n";
         return;
     }
@@ -51,8 +51,8 @@ sub BUILD {
 
     # set $workbook format
     my %font = (
-        font => $self->font_name,
-        size => $self->font_size,
+        font => $self->{font_name},
+        size => $self->{font_size},
     );
     my %header = (
         align    => 'center',
@@ -102,19 +102,22 @@ sub write_header {
     my $opt        = shift;
 
     # init
-    my $workbook = $self->workbook;
-    my $sheet    = $workbook->add_worksheet($sheet_name);
-    my $format   = $self->format;
+    #@type Excel::Writer::XLSX::Workbook
+    my $workbook = $self->{workbook};
+
+    #@type Excel::Writer::XLSX::Worksheet
+    my $sheet  = $workbook->add_worksheet($sheet_name);
+    my $format = $self->{format};
 
     my $header     = $opt->{header};
     my $query_name = $opt->{query_name};
 
     # create table header
-    for ( my $i = 0; $i < $self->column; $i++ ) {
-        $sheet->write( $self->row, $i, $query_name, $format->{HEADER} );
+    for ( my $i = 0; $i < $self->{column}; $i++ ) {
+        $sheet->write( $self->{row}, $i, $query_name, $format->{HEADER} );
     }
     for ( my $i = 0; $i < scalar @{$header}; $i++ ) {
-        $sheet->write( $self->row, $i + $self->column, $header->[$i], $format->{HEADER} );
+        $sheet->write( $self->{row}, $i + $self->{column}, $header->[$i], $format->{HEADER} );
     }
     $sheet->freeze_panes( 1, 0 );    # freeze table
 
@@ -127,16 +130,14 @@ sub sql2names {
     my $sql  = shift;
     my $opt  = shift;
 
-    # init
-    my $dbh = $self->dbh;
-
     # bind value
     my $bind_value = $opt->{bind_value};
     if ( !defined $bind_value ) {
         $bind_value = [];
     }
 
-    my $sth = $dbh->prepare($sql);
+    #@type DBI
+    my $sth = $self->dbh->prepare($sql);
     $sth->execute( @{$bind_value} );
     my @names = @{ $sth->{'NAME'} };
 
@@ -144,18 +145,19 @@ sub sql2names {
 }
 
 sub write_row {
-    my $self  = shift;
+    my $self = shift;
+
+    #@type Excel::Writer::XLSX::Worksheet
     my $sheet = shift;
     my $opt   = shift;
 
     # init
-    my $dbh    = $self->dbh;
-    my $format = $self->format;
+    my $format = $self->{format};
 
     # query name
     my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
-        $sheet->write( $self->row, $self->column - 1, $query_name, $format->{NAME} );
+        $sheet->write( $self->{row}, $self->{column} - 1, $query_name, $format->{NAME} );
     }
 
     # array_ref
@@ -163,7 +165,7 @@ sub write_row {
 
     # insert table
     for ( my $i = 0; $i < scalar @$row; $i++ ) {
-        $sheet->write( $self->row, $i + $self->column, $row->[$i], $format->{NORMAL} );
+        $sheet->write( $self->{row}, $i + $self->{column}, $row->[$i], $format->{NORMAL} );
     }
 
     $self->increase_row;
@@ -171,43 +173,45 @@ sub write_row {
 }
 
 sub write_column {
-    my $self  = shift;
+    my $self = shift;
+
+    #@type Excel::Writer::XLSX::Worksheet
     my $sheet = shift;
     my $opt   = shift;
 
     # init
-    my $dbh    = $self->dbh;
-    my $format = $self->format;
+    my $format = $self->{format};
 
     # query name
     my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
-        $sheet->write( $self->row - 1, $self->column, $query_name, $format->{NAME} );
+        $sheet->write( $self->{row} - 1, $self->{column}, $query_name, $format->{NAME} );
     }
 
     # array_ref
     my $column = $opt->{column};
 
     # insert table
-    $sheet->write( $self->row, $self->column, [$column], $format->{NORMAL} );
+    $sheet->write( $self->{row}, $self->{column}, [$column], $format->{NORMAL} );
 
     $self->increase_column;
     return;
 }
 
 sub write_sql {
-    my $self  = shift;
+    my $self = shift;
+
+    #@type Excel::Writer::XLSX::Worksheet
     my $sheet = shift;
     my $opt   = shift;
 
     # init
-    my $dbh    = $self->dbh;
-    my $format = $self->format;
+    my $format = $self->{format};
 
     # query name
     my $query_name = $opt->{query_name};
     if ( defined $query_name ) {
-        $sheet->write( $self->row, $self->column - 1, $query_name, $format->{NAME} );
+        $sheet->write( $self->{row}, $self->{column} - 1, $query_name, $format->{NAME} );
     }
 
     # bind value
@@ -218,7 +222,9 @@ sub write_sql {
 
     # init DBI query
     my $sql_query = $opt->{sql_query};
-    my $sth       = $dbh->prepare($sql_query);
+
+    #@type DBI
+    my $sth = $self->dbh->prepare($sql_query);
     $sth->execute( @{$bind_value} );
 
     # init $data
@@ -239,7 +245,7 @@ sub write_sql {
             if ( exists $opt->{data} ) {
                 push @{ $data->[$i] }, $row[$i];
             }
-            $sheet->write( $self->row, $i + $self->column, $row[$i], $format->{NORMAL} );
+            $sheet->write( $self->{row}, $i + $self->{column}, $row[$i], $format->{NORMAL} );
         }
         $self->increase_row;
     }
@@ -250,9 +256,6 @@ sub write_sql {
 sub make_combine {
     my $self = shift;
     my $opt  = shift;
-
-    # init objects
-    my $dbh = $self->dbh;
 
     # init parameters
     my $sql_query  = $opt->{sql_query};
@@ -272,7 +275,8 @@ sub make_combine {
     }
 
     # init DBI query
-    my $sth = $dbh->prepare($sql_query);
+    #@type DBI
+    my $sth = $self->dbh->prepare($sql_query);
     $sth->execute(@$bind_value);
 
     my @row_count = ();
@@ -325,9 +329,6 @@ sub make_combine {
 sub make_combine_piece {
     my ( $self, $opt ) = @_;
 
-    # init objects
-    my $dbh = $self->dbh;
-
     # init parameters
     my $sql_query = $opt->{sql_query};
     my $piece     = $opt->{piece};
@@ -339,7 +340,8 @@ sub make_combine_piece {
     }
 
     # init DBI query
-    my $sth = $dbh->prepare($sql_query);
+    #@type DBI
+    my $sth = $self->dbh->prepare($sql_query);
     $sth->execute(@$bind_value);
 
     my @row_count = ();
@@ -382,15 +384,13 @@ sub make_combine_piece {
 sub make_last_portion {
     my ( $self, $opt ) = @_;
 
-    # init objects
-    my $dbh = $self->dbh;
-
     # init parameters
     my $sql_query = $opt->{sql_query};
     my $portion   = $opt->{portion};
 
     # init DBI query
-    my $sth = $dbh->prepare($sql_query);
+    #@type DBI
+    my $sth = $self->dbh->prepare($sql_query);
     $sth->execute;
 
     my @row_count = ();
@@ -419,9 +419,6 @@ sub make_last_portion {
 sub excute_sql {
     my ( $self, $opt ) = @_;
 
-    # init
-    my $dbh = $self->dbh;
-
     # bind value
     my $bind_value = $opt->{bind_value};
     unless ( defined $bind_value ) {
@@ -430,7 +427,9 @@ sub excute_sql {
 
     # init DBI query
     my $sql_query = $opt->{sql_query};
-    my $sth       = $dbh->prepare($sql_query);
+
+    #@type DBI
+    my $sth = $self->dbh->prepare($sql_query);
     $sth->execute( @{$bind_value} );
 }
 
@@ -438,7 +437,8 @@ sub check_column {
     my ( $self, $table, $column ) = @_;
 
     # init
-    my $dbh = $self->dbh;
+    #@type DBI
+    my $dbh = $self->{dbh};
 
     {    # check table existing
         my @table_names = $dbh->tables( '', '', '' );
@@ -458,6 +458,8 @@ sub check_column {
             FROM $table
             LIKE "$column"
         };
+
+        #@type DBI
         my $sth = $dbh->prepare($sql_query);
         $sth->execute();
         my ($field) = $sth->fetchrow_array;
@@ -473,6 +475,8 @@ sub check_column {
             SELECT COUNT($column)
             FROM $table
         };
+
+        #@type DBI
         my $sth = $dbh->prepare($sql_query);
         $sth->execute;
         my ($count) = $sth->fetchrow_array;
@@ -507,9 +511,6 @@ sub quantile {
 sub quantile_sql {
     my ( $self, $opt, $part_number ) = @_;
 
-    # init objects
-    my $dbh = $self->dbh;
-
     # bind value
     my $bind_value = $opt->{bind_value};
     unless ( defined $bind_value ) {
@@ -518,7 +519,9 @@ sub quantile_sql {
 
     # init DBI query
     my $sql_query = $opt->{sql_query};
-    my $sth       = $dbh->prepare($sql_query);
+
+    #@type DBI
+    my $sth = $self->dbh->prepare($sql_query);
     $sth->execute(@$bind_value);
 
     my @data;
@@ -535,7 +538,8 @@ sub calc_threshold {
 
     my ( $combine, $piece );
 
-    my DBI $sth = $self->dbh->prepare(
+    #@type DBI
+    my $sth = $self->dbh->prepare(
         q{
         SELECT SUM(FLOOR(align_comparables / 500) * 500)
         FROM align
@@ -578,8 +582,8 @@ sub add_index_sheet {
     my $self = shift;
 
     #@type Excel::Writer::XLSX::Workbook
-    my $workbook = $self->workbook;
-    my $format   = $self->format;
+    my $workbook = $self->{workbook};
+    my $format   = $self->{format};
 
     # existing sheets
     my @sheets = $workbook->sheets();
@@ -601,6 +605,8 @@ sub add_index_sheet {
     $index_sheet->write_date_time( 'A1', $date, $format->{DATE} );
 
     for my $i ( 0 .. $#sheets ) {
+
+        #@type Excel::Writer::XLSX::Worksheet
         my $cur_sheet = $sheets[$i];
         my $cur_name  = $cur_sheet->get_name;
 
@@ -622,13 +628,13 @@ sub draw_y {
     my $opt   = shift;
 
     #@type Excel::Writer::XLSX::Workbook
-    my $workbook   = $self->workbook;
+    my $workbook   = $self->{workbook};
     my $sheet_name = $sheet->get_name;
 
-    my $font_name = $opt->{font_name} || $self->font_name;
-    my $font_size = $opt->{font_size} || $self->font_size;
-    my $height    = $opt->{height}    || $self->height;
-    my $width     = $opt->{width}     || $self->width;
+    my $font_name = $opt->{font_name} || $self->{font_name};
+    my $font_size = $opt->{font_size} || $self->{font_size};
+    my $height    = $opt->{height}    || $self->{height};
+    my $width     = $opt->{width}     || $self->{width};
 
     # E2
     my $top  = $opt->{top}  || 1;
@@ -729,13 +735,13 @@ sub draw_2y {
     my $opt   = shift;
 
     #@type Excel::Writer::XLSX::Workbook
-    my $workbook   = $self->workbook;
+    my $workbook   = $self->{workbook};
     my $sheet_name = $sheet->get_name;
 
-    my $font_name = $opt->{font_name} || $self->font_name;
-    my $font_size = $opt->{font_size} || $self->font_size;
-    my $height    = $opt->{height}    || $self->height;
-    my $width     = $opt->{width}     || $self->width;
+    my $font_name = $opt->{font_name} || $self->{font_name};
+    my $font_size = $opt->{font_size} || $self->{font_size};
+    my $height    = $opt->{height}    || $self->{height};
+    my $width     = $opt->{width}     || $self->{width};
 
     # E2
     my $top  = $opt->{top}  || 1;
@@ -855,13 +861,13 @@ sub draw_xy {
     my $opt   = shift;
 
     #@type Excel::Writer::XLSX::Workbook
-    my $workbook   = $self->workbook;
+    my $workbook   = $self->{workbook};
     my $sheet_name = $sheet->get_name;
 
-    my $font_name = $opt->{font_name} || $self->font_name;
-    my $font_size = $opt->{font_size} || $self->font_size;
-    my $height    = $opt->{height}    || $self->height;
-    my $width     = $opt->{width}     || $self->width;
+    my $font_name = $opt->{font_name} || $self->{font_name};
+    my $font_size = $opt->{font_size} || $self->{font_size};
+    my $height    = $opt->{height}    || $self->{height};
+    my $width     = $opt->{width}     || $self->{width};
 
     # trendline
     my $add_trend = $opt->{add_trend};
@@ -954,13 +960,13 @@ sub draw_dd {
     my $opt   = shift;
 
     #@type Excel::Writer::XLSX::Workbook
-    my $workbook   = $self->workbook;
+    my $workbook   = $self->{workbook};
     my $sheet_name = $sheet->get_name;
 
-    my $font_name = $opt->{font_name} || $self->font_name;
-    my $font_size = $opt->{font_size} || $self->font_size;
-    my $height    = $opt->{height}    || $self->height;
-    my $width     = $opt->{width}     || $self->width;
+    my $font_name = $opt->{font_name} || $self->{font_name};
+    my $font_size = $opt->{font_size} || $self->{font_size};
+    my $height    = $opt->{height}    || $self->{height};
+    my $width     = $opt->{width}     || $self->{width};
 
     # E2
     my $top  = $opt->{top}  || 1;
@@ -1085,7 +1091,7 @@ sub _find_scale {
     }
 
     $axis->add_data(@data);
-    $axis->set_maximum_intervals( $self->max_ticks );
+    $axis->set_maximum_intervals( $self->{max_ticks} );
 
     return {
         max  => $axis->top,
@@ -1097,7 +1103,7 @@ sub _find_scale {
 sub _replace_text {
     my $self    = shift;
     my $text    = shift;
-    my $replace = $self->replace;
+    my $replace = $self->{replace};
 
     for my $key ( keys %$replace ) {
         my $value = $replace->{$key};
@@ -1114,12 +1120,12 @@ sub DESTROY {
 
     # close excel objects
     #@type Excel::Writer::XLSX::Workbook
-    my $workbook = $self->workbook;
+    my $workbook = $self->{workbook};
     $workbook->close if $workbook;
 
     # close dbh
     #@type DBI
-    my $dbh = $self->dbh;
+    my $dbh = $self->{dbh};
     $dbh->disconnect if $dbh;
 
     return;
