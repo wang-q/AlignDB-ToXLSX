@@ -35,11 +35,11 @@ my $temp = Path::Tiny->tempfile;
     my $sheet = $xlsx->{Worksheet}[0];
 
     is( $sheet->{Name},             "basic", "Sheet Name" );
-    is( $sheet->{MaxRow},           "1",     "Sheet MaxRow" );
-    is( $sheet->{MaxCol},           "5",     "Sheet MaxCol" );
+    is( $sheet->{MaxRow},           1,       "Sheet MaxRow" );
+    is( $sheet->{MaxCol},           5,       "Sheet MaxCol" );
     is( $sheet->{Cells}[1][0]{Val}, "First", "Cell content 1" );
     is( $sheet->{Cells}[0][5]{Val}, "F",     "Cell content 2" );
-    is( $sheet->{Cells}[1][4]{Val}, "5",     "Cell content 3" );
+    is( $sheet->{Cells}[1][4]{Val}, 5,       "Cell content 3" );
 }
 
 done_testing();
