@@ -33,7 +33,7 @@ my $temp = Path::Tiny->tempfile;
         #        outfile => "03.xlsx",
     );
 
-    {    # make_combine
+    {    # make_combine; make_last_portion
         my $sql_query = q{
             SELECT
                 isw.isw_distance distance,
@@ -57,6 +57,16 @@ my $temp = Path::Tiny->tempfile;
             }
         );
         is( scalar( @{$combined} ), 10, "make_combine" );
+
+        my ( $all_length, $last_portion ) = $toxlsx->make_last_portion(
+            {   sql_query => $sql_query,
+                portion   => 0.05,
+            }
+        );
+
+        #        print YAML::Syck::Dump $last_portion;
+        is( $all_length,             97718, "make_last_portion" );
+        is( scalar @{$last_portion}, 13,    "make_last_portion" );
     }
 
     {    # make_combine_piece
