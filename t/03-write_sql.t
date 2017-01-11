@@ -5,6 +5,7 @@ use Test::More;
 use Path::Tiny;
 use Spreadsheet::XLSX;
 use DBI;
+use Archive::Zip;
 
 use AlignDB::ToXLSX;
 

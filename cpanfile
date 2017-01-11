@@ -13,4 +13,5 @@ on test => sub {
     requires 'DBI';
     requires 'DBD::CSV';
     requires 'Archive::Zip';
+    requires 'Tie::IxHash';
 };

@@ -58,7 +58,8 @@
             "DBI" : "0",
             "Path::Tiny" : "0.076",
             "Spreadsheet::XLSX" : "0.15",
-            "Test::More" : "0.88"
+            "Test::More" : "0.88",
+            "Tie::IxHash" : "0"
          }
       }
    },
