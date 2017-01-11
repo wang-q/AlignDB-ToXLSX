@@ -122,6 +122,8 @@ my $temp = Path::Tiny->tempfile;
         $toxlsx->replace( { diversity => "divergence" } );
         $toxlsx->draw_xy( $sheet, \%opt );
     }
+
+    $toxlsx->add_index_sheet;
 }
 
 {
@@ -134,6 +136,17 @@ my $temp = Path::Tiny->tempfile;
     is( $sheet->{Cells}[0][2]{Val},  "COUNT", "Cell content 1" );
     is( $sheet->{Cells}[1][0]{Val},  -1,      "Cell content 2" );
     is( $sheet->{Cells}[22][2]{Val}, 15,      "Cell content 3" );
+}
+
+{
+    my $xlsx  = Spreadsheet::XLSX->new( $temp->stringify );
+    my $sheet = $xlsx->{Worksheet}[1];
+
+    is( $sheet->{Name},   "INDEX", "Sheet Name" );
+    is( $sheet->{MaxRow}, 1,       "Sheet MaxRow" );
+    is( $sheet->{MaxCol}, 0,       "Sheet MaxCol" );
+    like( $sheet->{Cells}[0][0]{Val}, qr{\d+\-\d+}, "Cell content 1" );
+    is( $sheet->{Cells}[1][0]{Val}, "d1_pi", "Cell content 2" );
 }
 
 {    # chech chart*.xml exist
