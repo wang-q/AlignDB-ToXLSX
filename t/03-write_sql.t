@@ -69,16 +69,17 @@ my $temp = Path::Tiny->tempfile;
 
     {            # draw_y
         my %opt = (
-            x_column    => 0,
-            y_column    => 1,
-            first_row   => 2,
-            last_row    => 17,
-            x_max_scale => 15,
-            y_data      => $data->[1],
-            x_title     => "Distance to indels (d1)",
-            y_title     => "Nucleotide diversity",
-            top         => 1,
-            left        => 4,
+            x_column  => 0,
+            y_column  => 1,
+            first_row => 2,
+            last_row  => 17,
+
+            #            x_max_scale => 15,
+            y_data  => $data->[1],
+            x_title => "Distance to indels (d1)",
+            y_title => "Nucleotide diversity",
+            top     => 1,
+            left    => 4,
         );
 
         $toxlsx->draw_y( $sheet, \%opt );
@@ -86,19 +87,20 @@ my $temp = Path::Tiny->tempfile;
 
     {    # draw_2y
         my %opt = (
-            x_column    => 0,
-            y_column    => 1,
-            first_row   => 2,
-            last_row    => 17,
-            x_max_scale => 15,
-            y_data      => $data->[1],
-            x_title     => "Distance to indels (d1)",
-            y_title     => "Nucleotide diversity",
-            y2_column   => 2,
-            y2_data     => $data->[2],
-            y2_title    => "Count",
-            top         => 1 + 18,
-            left        => 4,
+            x_column  => 0,
+            y_column  => 1,
+            first_row => 2,
+            last_row  => 17,
+
+            #            x_max_scale => 15,
+            y_data    => $data->[1],
+            x_title   => "Distance to indels (d1)",
+            y_title   => "Nucleotide diversity",
+            y2_column => 2,
+            y2_data   => $data->[2],
+            y2_title  => "Count",
+            top       => 1 + 18,
+            left      => 4,
         );
 
         $toxlsx->draw_2y( $sheet, \%opt );
@@ -117,10 +119,9 @@ my $temp = Path::Tiny->tempfile;
             top       => 1 + 18 * 2,
             left      => 4,
         );
-
+        $toxlsx->replace( { diversity => "divergence" } );
         $toxlsx->draw_xy( $sheet, \%opt );
     }
-
 }
 
 {
