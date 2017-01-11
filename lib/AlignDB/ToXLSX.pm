@@ -6,7 +6,7 @@ use YAML::Syck;
 use Excel::Writer::XLSX;
 use Statistics::Descriptive;
 use Chart::Math::Axis;
-use List::Util qw(min max);
+use List::Util;
 use List::MoreUtils qw( any );
 
 our $VERSION = '1.1.7';
@@ -533,11 +533,9 @@ sub quantile_sql {
 sub calc_threshold {
     my $self = shift;
 
-    my $dbh = $self->dbh;
-
     my ( $combine, $piece );
 
-    my $sth = $dbh->prepare(
+    my DBI $sth = $self->dbh->prepare(
         q{
         SELECT SUM(FLOOR(align_comparables / 500) * 500)
         FROM align
@@ -579,6 +577,7 @@ sub calc_threshold {
 sub add_index_sheet {
     my $self = shift;
 
+    #@type Excel::Writer::XLSX::Workbook
     my $workbook = $self->workbook;
     my $format   = $self->format;
 
@@ -586,7 +585,9 @@ sub add_index_sheet {
     my @sheets = $workbook->sheets();
 
     # create a new worksheet named "INDEX"
-    my $sheet_name  = "INDEX";
+    my $sheet_name = "INDEX";
+
+    #@type Excel::Writer::XLSX::Worksheet
     my $index_sheet = $workbook->add_worksheet($sheet_name);
 
     # set hyperlink column with large width
@@ -614,10 +615,13 @@ sub add_index_sheet {
 }
 
 sub draw_y {
-    my $self  = shift;
+    my $self = shift;
+
+    #@type Excel::Writer::XLSX::Worksheet
     my $sheet = shift;
     my $opt   = shift;
 
+    #@type Excel::Writer::XLSX::Workbook
     my $workbook   = $self->workbook;
     my $sheet_name = $sheet->get_name;
 
@@ -648,8 +652,8 @@ sub draw_y {
     }
     if ( !defined $x_max_scale ) {
         my $x_scale_unit = $opt->{x_scale_unit};
-        my $x_min_value  = min( @{ $opt->{x_data} } );
-        my $x_max_value  = max( @{ $opt->{x_data} } );
+        my $x_min_value  = List::Util::min( @{ $opt->{x_data} } );
+        my $x_max_value  = List::Util::max( @{ $opt->{x_data} } );
         $x_min_scale = int( $x_min_value / $x_scale_unit ) * $x_scale_unit;
         $x_max_scale = ( int( $x_max_value / $x_scale_unit ) + 1 ) * $x_scale_unit;
     }
@@ -659,6 +663,7 @@ sub draw_y {
         $y_scale = $self->_find_scale( $opt->{y_data}, $first_row, $last_row );
     }
 
+    #@type Excel::Writer::XLSX::Chart
     my $chart = $workbook->add_chart(
         type     => 'scatter',
         subtype  => 'straight_with_markers',
@@ -685,8 +690,8 @@ sub draw_y {
     # set axis
     $chart->set_x_axis(
         name      => $self->_replace_text( $opt->{x_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -697,8 +702,8 @@ sub draw_y {
     );
     $chart->set_y_axis(
         name      => $self->_replace_text( $opt->{y_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -717,10 +722,13 @@ sub draw_y {
 }
 
 sub draw_2y {
-    my $self  = shift;
+    my $self = shift;
+
+    #@type Excel::Writer::XLSX::Worksheet
     my $sheet = shift;
     my $opt   = shift;
 
+    #@type Excel::Writer::XLSX::Workbook
     my $workbook   = $self->workbook;
     my $sheet_name = $sheet->get_name;
 
@@ -748,8 +756,8 @@ sub draw_2y {
     }
     if ( !defined $x_max_scale ) {
         my $x_scale_unit = $opt->{x_scale_unit};
-        my $x_min_value  = min( @{ $opt->{x_data} } );
-        my $x_max_value  = max( @{ $opt->{x_data} } );
+        my $x_min_value  = List::Util::min( @{ $opt->{x_data} } );
+        my $x_max_value  = List::Util::max( @{ $opt->{x_data} } );
         $x_min_scale = int( $x_min_value / $x_scale_unit ) * $x_scale_unit;
         $x_max_scale = ( int( $x_max_value / $x_scale_unit ) + 1 ) * $x_scale_unit;
     }
@@ -764,6 +772,7 @@ sub draw_2y {
         $y2_scale = $self->_find_scale( $opt->{y2_data}, $first_row, $last_row );
     }
 
+    #@type Excel::Writer::XLSX::Chart
     my $chart = $workbook->add_chart(
         type     => 'scatter',
         subtype  => 'straight_with_markers',
@@ -796,8 +805,8 @@ sub draw_2y {
     # set axis
     $chart->set_x_axis(
         name      => $self->_replace_text( $opt->{x_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -807,8 +816,8 @@ sub draw_2y {
     );
     $chart->set_y_axis(
         name      => $self->_replace_text( $opt->{y_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -819,8 +828,8 @@ sub draw_2y {
     );
     $chart->set_y2_axis(
         name      => $self->_replace_text( $opt->{y2_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -839,10 +848,13 @@ sub draw_2y {
 }
 
 sub draw_xy {
-    my $self  = shift;
+    my $self = shift;
+
+    #@type Excel::Writer::XLSX::Worksheet
     my $sheet = shift;
     my $opt   = shift;
 
+    #@type Excel::Writer::XLSX::Workbook
     my $workbook   = $self->workbook;
     my $sheet_name = $sheet->get_name;
 
@@ -874,6 +886,7 @@ sub draw_xy {
         $y_scale = $self->_find_scale( $opt->{y_data}, $first_row, $last_row );
     }
 
+    #@type Excel::Writer::XLSX::Chart
     my $chart = $workbook->add_chart( type => 'scatter', embedded => 1 );
 
     # [ $sheetname, $row_start, $row_end, $col_start, $col_end ]
@@ -902,8 +915,8 @@ sub draw_xy {
     # set axis
     $chart->set_x_axis(
         name      => $self->_replace_text( $opt->{x_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -914,8 +927,8 @@ sub draw_xy {
     );
     $chart->set_y_axis(
         name      => $self->_replace_text( $opt->{y_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -934,10 +947,13 @@ sub draw_xy {
 }
 
 sub draw_dd {
-    my $self  = shift;
+    my $self = shift;
+
+    #@type Excel::Writer::XLSX::Worksheet
     my $sheet = shift;
     my $opt   = shift;
 
+    #@type Excel::Writer::XLSX::Workbook
     my $workbook   = $self->workbook;
     my $sheet_name = $sheet->get_name;
 
@@ -968,8 +984,8 @@ sub draw_dd {
     }
     if ( !defined $x_max_scale ) {
         my $x_scale_unit = $opt->{x_scale_unit};
-        my $x_min_value  = min( @{ $opt->{x_data} } );
-        my $x_max_value  = max( @{ $opt->{x_data} } );
+        my $x_min_value  = List::Util::min( @{ $opt->{x_data} } );
+        my $x_max_value  = List::Util::max( @{ $opt->{x_data} } );
         $x_min_scale = int( $x_min_value / $x_scale_unit ) * $x_scale_unit;
         $x_max_scale = ( int( $x_max_value / $x_scale_unit ) + 1 ) * $x_scale_unit;
     }
@@ -979,6 +995,7 @@ sub draw_dd {
         $y_scale = $self->_find_scale( $opt->{y_data} );
     }
 
+    #@type Excel::Writer::XLSX::Chart
     my $chart = $workbook->add_chart(
         type     => 'line',
         embedded => 1
@@ -1004,8 +1021,8 @@ sub draw_dd {
     # set axis
     $chart->set_x_axis(
         name      => $self->_replace_text( $opt->{x_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -1016,8 +1033,8 @@ sub draw_dd {
     );
     $chart->set_y_axis(
         name      => $self->_replace_text( $opt->{y_title} ),
-        name_font => { name => $self->font_name, size => $self->font_size, },
-        num_font  => { name => $self->font_name, size => $self->font_size, },
+        name_font => { name => $font_name, size => $font_size, },
+        num_font  => { name => $font_name, size => $font_size, },
         line            => { color   => 'black', },
         major_gridlines => { visible => 0, },
         minor_gridlines => { visible => 0, },
@@ -1096,10 +1113,12 @@ sub DESTROY {
     my $self = shift;
 
     # close excel objects
+    #@type Excel::Writer::XLSX::Workbook
     my $workbook = $self->workbook;
     $workbook->close if $workbook;
 
     # close dbh
+    #@type DBI
     my $dbh = $self->dbh;
     $dbh->disconnect if $dbh;
 
