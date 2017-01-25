@@ -2,6 +2,9 @@ Revision history for AlignDB-ToXLSX
 
 {{$NEXT}}
 
+1.2.1 2017-01-25T20:21:39Z
+    - Remove single quotes from attribute names
+
 1.2.0 2017-01-11T15:44:53Z
     - Release to CPAN
     - Improve test coverage
