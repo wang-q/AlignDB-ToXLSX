@@ -12,26 +12,26 @@ use List::MoreUtils qw();
 our $VERSION = '1.2.0';
 
 # Mysql dbh
-has 'dbh' => ( is => 'ro', isa => 'Object' );
+has dbh => ( is => 'ro', isa => 'Object' );
 
 # outfiles
-has 'outfile'  => ( is => 'ro', isa => 'Str' );        # output file, autogenerable
-has 'workbook' => ( is => 'ro', isa => 'Object' );     # excel workbook object
-has 'format'   => ( is => 'ro', isa => 'HashRef' );    # excel formats
+has outfile  => ( is => 'ro', isa => 'Str' );        # output file, autogenerable
+has workbook => ( is => 'ro', isa => 'Object' );     # excel workbook object
+has format   => ( is => 'ro', isa => 'HashRef' );    # excel formats
 
 # worksheet cursor
-has 'row'    => ( is => 'rw', isa => 'Num', default => sub {0}, );
-has 'column' => ( is => 'rw', isa => 'Num', default => sub {0}, );
+has row    => ( is => 'rw', isa => 'Num', default => sub {0}, );
+has column => ( is => 'rw', isa => 'Num', default => sub {0}, );
 
 # charts
-has 'font_name' => ( is => 'rw', isa => 'Str', default => sub {'Arial'}, );
-has 'font_size' => ( is => 'rw', isa => 'Num', default => sub {10}, );
-has 'width'     => ( is => 'rw', isa => 'Num', default => sub {320}, );
-has 'height'    => ( is => 'rw', isa => 'Num', default => sub {320}, );
-has 'max_ticks' => ( is => 'rw', isa => 'Int', default => sub {6} );
+has font_name => ( is => 'rw', isa => 'Str', default => sub {'Arial'}, );
+has font_size => ( is => 'rw', isa => 'Num', default => sub {10}, );
+has width     => ( is => 'rw', isa => 'Num', default => sub {320}, );
+has height    => ( is => 'rw', isa => 'Num', default => sub {320}, );
+has max_ticks => ( is => 'rw', isa => 'Int', default => sub {6} );
 
 # Replace texts in titles
-has 'replace' => ( is => 'rw', isa => 'HashRef', default => sub { {} } );
+has replace => ( is => 'rw', isa => 'HashRef', default => sub { {} } );
 
 sub BUILD {
     my $self = shift;
